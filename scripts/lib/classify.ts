@@ -95,7 +95,13 @@ forgetfulness AND a "calendar" appointment).
 Skip pure logistics with no care/life/calendar content (e.g. "ok", "👍", "see you then"
 with no other detail), and skip anything not actually about ${lovedOneName} per above.
 Every item must include sourceMessageIndex, the #N tag of the message it came from.
-Never invent details the conversation doesn't support.`;
+Never invent details the conversation doesn't support.
+
+"type" (care items only) must be exactly one of: visit, observation, pharmacy,
+appointment, memory - use "pharmacy" for medication events, never "medication" or
+any other word. "mood" (care items only) must be exactly one of: positive, neutral,
+negative - never a more specific word like "declining" or "confused", pick the
+closest of those three.`;
 }
 
 /**
