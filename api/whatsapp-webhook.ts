@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { parseWhatsAppWebhookPayload } from "./_lib/whatsapp.js";
+import { ingestWhatsAppMessage } from "./_lib/ingest.js";
 
 // NOTE: this endpoint does not verify the X-Hub-Signature-256 header, so
 // anyone who finds the URL could POST a forged payload. Fine for a hackathon
@@ -34,15 +35,15 @@ async function handleIncomingMessages(req: VercelRequest, res: VercelResponse) {
   try {
     const messages = parseWhatsAppWebhookPayload(req.body);
     for (const message of messages) {
-      // TODO: once the shared knowledge base backend exists, run structured
-      // extraction and persist here. Await any async writes before
-      // responding below, so Meta doesn't retry a message we already saved.
       console.log("WhatsApp message received:", message);
+      await ingestWhatsAppMessage(message);
     }
   } catch (err) {
-    console.error("Failed to parse WhatsApp webhook payload", err);
+    console.error("Failed to ingest WhatsApp webhook payload", err);
   }
 
-  // Always ack with 2xx so Meta doesn't retry-storm the endpoint.
+  // Always ack with 2xx so Meta doesn't retry-storm the endpoint. Errors are
+  // logged above rather than surfaced here, since a 5xx would make Meta retry
+  // delivery of a message we may have already partially saved.
   return res.status(200).send("EVENT_RECEIVED");
 }

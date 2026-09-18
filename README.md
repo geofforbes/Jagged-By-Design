@@ -64,7 +64,45 @@ helper for replying (used later by the "Ask" feature).
 **Deliberate scope cuts for the hackathon:** the webhook doesn't verify
 Meta's `X-Hub-Signature-256` header, so it trusts any POST to that URL. Fine
 behind an unguessable path for a demo; would need fixing before real use.
-Incoming messages are only logged right now — persisting them to the shared
-knowledge base is the next piece of work once that backend exists. The bot
-also never messages first (avoids needing an approved message template) —
-it only replies within the 24h window opened by an incoming message.
+The bot also never messages first (avoids needing an approved message
+template) — it only replies within the 24h window opened by an incoming
+message.
+
+## Database & knowledge base
+
+Incoming messages are now persisted and turned into structured timeline
+events (visits, observations, pharmacy events, etc.) via Claude, per
+`db/schema.sql`.
+
+**Setup:**
+
+1. Vercel dashboard → your project → **Storage** tab → **Create Database** →
+   **Postgres** (this provisions a Neon database and auto-injects
+   `DATABASE_URL`/`POSTGRES_URL` into your project's env vars — no manual
+   copy-pasting needed).
+2. Open that database's **Query** console (in the Storage tab) and paste in
+   the full contents of `db/schema.sql`, then run it. Safe to re-run anytime.
+3. Get an API key from [console.anthropic.com](https://console.anthropic.com)
+   and add it to Vercel's Environment Variables as `ANTHROPIC_API_KEY`.
+4. Redeploy so the new env vars take effect.
+
+**How it fits together:**
+
+- `api/_lib/db.ts` — typed query helpers (`insertMessage`, `insertEvent`,
+  `listEvents`, `listPeople`, `getOrCreatePersonByWaId`, `getLovedOne`)
+- `api/_lib/extract.ts` — turns one message's raw text into a structured
+  event via Claude's structured outputs (`isRelevant`/`type`/`summary`/`mood`),
+  or `null` if the message has no care-relevant content (e.g. "ok", "👍")
+- `api/_lib/ingest.ts` — the shared pipeline (save raw message → extract →
+  save event) used by both the webhook and the demo seed script
+- `api/events.ts`, `api/people.ts`, `api/loved-one.ts` — read-only `GET`
+  endpoints for the frontend to build the timeline against
+
+**Schema:** four tables — `loved_one` (single profile row), `people`
+(circle of care, matched to WhatsApp senders by `wa_id`), `messages` (raw
+ingested WhatsApp messages, for provenance), `events` (the unified timeline —
+one row per visit/observation/pharmacy/appointment/memory). Kept intentionally
+flat: one loved one per deployment, no multi-tenancy, no vector search — the
+"Ask" feature (not yet built) can just feed the full `events` table into
+Claude as context, since a hackathon dataset is small enough that full-context
+retrieval is simpler and more reliable than building real RAG infrastructure.
