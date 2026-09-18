@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { CLAUDE_MODEL } from "./claude-model.js";
 
 const client = new Anthropic();
 
@@ -41,7 +42,7 @@ no care-relevant content, set isRelevant to false and leave the other fields nul
  */
 export async function extractEvent(messageText: string): Promise<ExtractedEvent | null> {
   const response = await client.messages.parse({
-    model: "claude-opus-5",
+    model: CLAUDE_MODEL,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: messageText }],

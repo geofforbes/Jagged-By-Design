@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { CLAUDE_MODEL } from "../../api/_lib/claude-model.js";
 
 const client = new Anthropic();
 
@@ -116,7 +117,7 @@ export async function classifyChunk(
     .join("\n");
 
   const response = await client.messages.parse({
-    model: "claude-opus-5",
+    model: CLAUDE_MODEL,
     max_tokens: 16000,
     system: systemPrompt(lovedOneName, lovedOneAliases),
     messages: [{ role: "user", content: transcript }],

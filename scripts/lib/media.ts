@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODEL } from "../../api/_lib/claude-model.js";
 
 const client = new Anthropic();
 
@@ -33,7 +34,7 @@ export async function describeImage(filePath: string, captionText?: string): Pro
   const data = (await readFile(filePath)).toString("base64");
 
   const response = await client.messages.create({
-    model: "claude-opus-5",
+    model: CLAUDE_MODEL,
     max_tokens: 300,
     messages: [
       {
