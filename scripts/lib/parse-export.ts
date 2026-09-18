@@ -1,14 +1,14 @@
 /**
  * Parses a WhatsApp "Export Chat" text file into structured messages.
  *
- * Handles the two common export formats:
- *   iOS:     [DD/MM/YYYY, HH:MM:SS] Sender: text
- *   Android: DD/MM/YYYY, HH:MM - Sender: text
+ * Handles both date orderings seen across regions/app versions:
+ *   DD/MM/YYYY, HH:MM[:SS] - Sender: text   (or "[..]" brackets, iOS)
+ *   YYYY/MM/DD, HH:MM - Sender: text
  *
- * Assumes DD/MM/YYYY (non-US) date order and a 24h or 12h (AM/PM) clock.
- * Real exports vary by locale/app version more than this covers - once we
- * have a real file to test against, adjust LINE_PATTERN and parseDateTime
- * rather than guessing further edge cases up front.
+ * and both "." and "/" as the date separator, with or without seconds, and
+ * with or without AM/PM. Lines with a timestamp prefix but no "Sender: text"
+ * shape (group-created/added/left notices, encryption notices) are system
+ * lines and are skipped, not glued onto the previous message.
  */
 
 export interface ParsedWhatsAppMessage {
@@ -17,12 +17,14 @@ export interface ParsedWhatsAppMessage {
   text: string;
   /** Filename of an attached media file, present in the export folder. */
   attachmentFilename: string | null;
-  /** e.g. "image" when media was referenced but not included in the export (locale text varies). */
+  /** e.g. "media" when an attachment was referenced but not included in the export. */
   omittedMediaType: string | null;
 }
 
-const LINE_PATTERN =
-  /^\[?(\d{1,2})\/(\d{1,2})\/(\d{2,4}),\s?(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?)\]?\s?-?\s?([^:]+):\s(.*)$/;
+const DATE_TIME_PREFIX =
+  /^\[?(\d{1,4})[/.](\d{1,2})[/.](\d{1,4}),\s?(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?)\]?\s?-?\s?/;
+
+const FULL_LINE_PATTERN = new RegExp(DATE_TIME_PREFIX.source + "([^:]+):\\s(.*)$");
 
 const ATTACHMENT_PATTERNS = [
   /<attached:\s*(.+?)>/i, // iOS
@@ -31,13 +33,25 @@ const ATTACHMENT_PATTERNS = [
 
 const OMITTED_PATTERN = /\b(image|video|audio|sticker|gif|document|media)\s+omitted\b/i;
 
-// Strips WhatsApp's invisible left-to-right marks, which otherwise break the regex.
+// Strips WhatsApp's invisible left-to-right/right-to-left marks, which otherwise break the regex.
 function cleanLine(line: string): string {
   return line.replace(/[‎‏]/g, "").trimEnd();
 }
 
-function parseDateTime(day: number, month: number, yearRaw: number, time: string): Date {
-  const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+/**
+ * Exactly one of the two outer date components is a 4-digit year; the other
+ * is a day (max 31). Whichever exceeds 31 is unambiguously the year - this
+ * disambiguates DD/MM/YYYY from YYYY/MM/DD without needing a locale hint.
+ */
+function resolveDateParts(a: number, month: number, c: number): { day: number; month: number; year: number } {
+  if (a > 31) {
+    return { year: a, month, day: c };
+  }
+  const year = c < 100 ? 2000 + c : c;
+  return { year, month, day: a };
+}
+
+function parseTime(time: string): { hours: number; minutes: number; seconds: number } {
   const ampmMatch = /([AaPp][Mm])$/.exec(time.trim());
   const timeOnly = time.trim().replace(/[AaPp][Mm]$/, "").trim();
   const [hoursStr, minutesStr, secondsStr] = timeOnly.split(":");
@@ -51,7 +65,7 @@ function parseDateTime(day: number, month: number, yearRaw: number, time: string
     if (!isPM && hours === 12) hours = 0;
   }
 
-  return new Date(year, month - 1, day, hours, minutes, seconds);
+  return { hours, minutes, seconds };
 }
 
 export function parseWhatsAppExport(chatText: string): ParsedWhatsAppMessage[] {
@@ -61,17 +75,23 @@ export function parseWhatsAppExport(chatText: string): ParsedWhatsAppMessage[] {
     const line = cleanLine(rawLine);
     if (!line) continue;
 
-    const match = LINE_PATTERN.exec(line);
-    if (!match) {
-      // Continuation of the previous message's text (WhatsApp messages can
-      // span multiple lines), or a system line we don't otherwise handle.
+    const fullMatch = FULL_LINE_PATTERN.exec(line);
+    if (!fullMatch) {
+      // No "Sender: text" shape. Either a system notice with the same
+      // timestamp prefix (created group, added/left, encryption notice) -
+      // skip it - or a continuation line of the previous real message.
+      if (DATE_TIME_PREFIX.test(line)) {
+        continue;
+      }
       if (messages.length > 0) {
         messages[messages.length - 1].text += `\n${line}`;
       }
       continue;
     }
 
-    const [, day, month, year, time, sender, rawText] = match;
+    const [, aRaw, monthRaw, cRaw, time, sender, rawText] = fullMatch;
+    const { day, month, year } = resolveDateParts(Number(aRaw), Number(monthRaw), Number(cRaw));
+    const { hours, minutes, seconds } = parseTime(time);
     const text = rawText.trim();
 
     let attachmentFilename: string | null = null;
@@ -86,7 +106,7 @@ export function parseWhatsAppExport(chatText: string): ParsedWhatsAppMessage[] {
     const omittedMatch = OMITTED_PATTERN.exec(text);
 
     messages.push({
-      timestamp: parseDateTime(Number(day), Number(month), Number(year), time),
+      timestamp: new Date(year, month - 1, day, hours, minutes, seconds),
       sender: sender.trim(),
       text,
       attachmentFilename,
