@@ -20,17 +20,18 @@ interface DemoRequestBody {
   aliases?: string[];
 }
 
-// Deliberately a single classifyChunk call over the whole upload, not
-// day-chunked like the CLI pipeline - day-chunking exists there purely to
-// keep years of history affordable, not because it's faster. Measured
-// against real data: ~124 messages -> 7.6s, ~300 messages -> ~20s, and a
-// live 300-message attempt through this endpoint hit a platform-level
-// gateway timeout (504) despite completing in ~20s in a direct local test -
-// that gap is real network/cold-start overhead a local test doesn't
-// capture, not something to explain away. Capped well under the smaller
-// number actually observed to work, with real margin instead of a
-// best-case estimate.
-const MAX_MESSAGES = 150;
+// One classifyChunk call per request - the browser sends the upload as a
+// sequence of small batches (see BATCH_SIZE in DemoPage.tsx) and merges the
+// results, rather than this endpoint chunking internally. That's a direct
+// response to production evidence, not a guess: a single 300-message request
+// 504'd despite completing in ~20s in a direct local test, and a single
+// 140-message request (well under the old 150 cap) 504'd too even though
+// local timing put it at ~7-8s. Both point to a platform-level per-invocation
+// limit stricter than the maxDuration configured below - most likely the
+// Hobby plan's execution cap, which app code can't override. This constant
+// is a safety net against a misbehaving client sending an oversized batch,
+// not the primary size control.
+const MAX_MESSAGES = 30;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -44,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (body.messages.length > MAX_MESSAGES) {
     return res.status(400).json({
-      error: `This live demo handles up to ${MAX_MESSAGES} messages at once (got ${body.messages.length}) to stay well within the platform's request timeout. Use a shorter date range for the live demo, or scripts/process-export.ts for a full history.`,
+      error: `This endpoint handles up to ${MAX_MESSAGES} messages per request (got ${body.messages.length}) to stay well within the platform's per-invocation limit. The demo page sends uploads in small batches automatically - if you're calling this endpoint directly, split your request.`,
     });
   }
 

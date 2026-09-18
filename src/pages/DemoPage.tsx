@@ -5,10 +5,20 @@ import { parseWhatsAppExport, type ParsedWhatsAppMessage } from "../lib/parseWha
 
 type Phase = "idle" | "parsed" | "processing" | "done" | "error";
 
-// Mirrors MAX_MESSAGES in api/demo-classify.ts - surfaced here so an
-// oversized file gets a clear heads-up before the request, not just a
-// rejection after clicking Process.
+// Total upload size this live demo accepts - surfaced here so an oversized
+// file gets a clear heads-up before processing starts, not just a rejection
+// partway through.
 const DEMO_MAX_MESSAGES = 150;
+
+// Messages sent per /api/demo-classify request. Even a single 140-message
+// request (well under DEMO_MAX_MESSAGES, and ~7-8s by local timing) still hit
+// a 504 in production, which means Vercel's real per-invocation limit is
+// stricter than the maxDuration we configured - most likely the Hobby plan's
+// platform-level cap, which isn't overridable from app code. Rather than
+// chase the exact number, each request is kept small enough (a few seconds
+// of Claude time) to comfortably fit under any plausible limit; the browser
+// sends the upload as a sequence of small requests and merges the results.
+const BATCH_SIZE = 25;
 
 export default function DemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -18,6 +28,7 @@ export default function DemoPage() {
   const [aliases, setAliases] = useState("");
   const [results, setResults] = useState<DemoResults | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleFile(file: File) {
@@ -33,6 +44,30 @@ export default function DemoPage() {
     reader.readAsText(file);
   }
 
+  async function classifyBatch(batch: ParsedWhatsAppMessage[]): Promise<DemoResults> {
+    const response = await fetch("/api/demo-classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: batch.map((m) => ({
+          timestamp: m.timestamp.toISOString(),
+          sender: m.sender,
+          text: m.text,
+        })),
+        lovedOneName: lovedOneName.trim(),
+        aliases: aliases
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean),
+      }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Request failed (${response.status})`);
+    }
+    return (await response.json()) as DemoResults;
+  }
+
   async function handleProcess() {
     if (!lovedOneName.trim()) {
       setError("Enter the loved one's name before processing.");
@@ -40,33 +75,30 @@ export default function DemoPage() {
     }
     setPhase("processing");
     setError(null);
+
+    const batches: ParsedWhatsAppMessage[][] = [];
+    for (let i = 0; i < messages.length; i += BATCH_SIZE) {
+      batches.push(messages.slice(i, i + BATCH_SIZE));
+    }
+    setBatchProgress({ done: 0, total: batches.length });
+
+    const merged: DemoResults = { care: [], lifeStory: [], calendar: [] };
+    let nextId = 1;
     try {
-      const response = await fetch("/api/demo-classify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: messages.map((m) => ({
-            timestamp: m.timestamp.toISOString(),
-            sender: m.sender,
-            text: m.text,
-          })),
-          lovedOneName: lovedOneName.trim(),
-          aliases: aliases
-            .split(",")
-            .map((a) => a.trim())
-            .filter(Boolean),
-        }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || `Request failed (${response.status})`);
+      for (const batch of batches) {
+        const batchResult = await classifyBatch(batch);
+        for (const item of batchResult.care) merged.care.push({ ...item, id: nextId++ });
+        for (const item of batchResult.lifeStory) merged.lifeStory.push({ ...item, id: nextId++ });
+        for (const item of batchResult.calendar) merged.calendar.push({ ...item, id: nextId++ });
+        setBatchProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
       }
-      const data: DemoResults = await response.json();
-      setResults(data);
+      setResults(merged);
       setPhase("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setPhase("parsed");
+    } finally {
+      setBatchProgress(null);
     }
   }
 
@@ -146,7 +178,15 @@ export default function DemoPage() {
             {phase === "processing" && (
               <div className="demo-processing">
                 <div className="demo-spinner" />
-                <p>Reading the conversation and extracting structured knowledge…</p>
+                <p>
+                  Reading the conversation and extracting structured knowledge…
+                  {batchProgress && (
+                    <>
+                      <br />
+                      Batch {Math.min(batchProgress.done + 1, batchProgress.total)} of {batchProgress.total}
+                    </>
+                  )}
+                </p>
               </div>
             )}
             {phase === "done" && results && <ResultsPreview results={results} />}
