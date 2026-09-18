@@ -5,6 +5,11 @@ import { parseWhatsAppExport, type ParsedWhatsAppMessage } from "../lib/parseWha
 
 type Phase = "idle" | "parsed" | "processing" | "done" | "error";
 
+// Mirrors MAX_MESSAGES in api/demo-classify.ts - surfaced here so an
+// oversized file gets a clear heads-up before the request, not just a
+// rejection after clicking Process.
+const DEMO_MAX_MESSAGES = 150;
+
 export default function DemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [messages, setMessages] = useState<ParsedWhatsAppMessage[]>([]);
@@ -110,6 +115,12 @@ export default function DemoPage() {
             {phase === "parsed" && (
               <div className="demo-process-form">
                 <p>{messages.length} messages parsed. Who is this conversation about?</p>
+                {messages.length > DEMO_MAX_MESSAGES && (
+                  <p className="demo-error">
+                    That's {messages.length} messages — this live demo handles up to {DEMO_MAX_MESSAGES} at once
+                    to stay fast and reliable. Export a shorter date range for the live demo.
+                  </p>
+                )}
                 <input
                   type="text"
                   placeholder="Loved one's name (e.g. Nana)"
@@ -123,7 +134,11 @@ export default function DemoPage() {
                   onChange={(e) => setAliases(e.target.value)}
                 />
                 {error && <p className="demo-error">{error}</p>}
-                <button className="demo-process-button" onClick={handleProcess}>
+                <button
+                  className="demo-process-button"
+                  onClick={handleProcess}
+                  disabled={messages.length > DEMO_MAX_MESSAGES}
+                >
                   Process this conversation
                 </button>
               </div>
