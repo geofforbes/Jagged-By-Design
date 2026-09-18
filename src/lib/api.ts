@@ -1,5 +1,4 @@
-import type { AskResponse, BeforeIVisitResponse } from "../types";
-import { entries } from "../data/entries";
+import type { AskResponse, BeforeIVisitResponse, KnowledgeEntry } from "../types";
 import { lovedOne } from "../data/lovedOne";
 import { retrieveEntries, recentEntries } from "./retrieval";
 
@@ -16,17 +15,20 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
   return res.json();
 }
 
-export async function askKnowledgeBase(question: string): Promise<AskResponse> {
+export async function askKnowledgeBase(
+  question: string,
+  entries: KnowledgeEntry[],
+): Promise<AskResponse> {
   const relevant = retrieveEntries(entries, question);
   return postJson<AskResponse>("/api/ask", { question, entries: relevant });
 }
 
 /**
- * The auto-loaded "how she's doing" card on the home screen — same Ask
+ * The auto-loaded "today's picture" status card in Care Co. — same Ask
  * pipeline, but with a fixed prompt over just the last couple of weeks
  * rather than a family member's own question.
  */
-export async function getStatusSummary(): Promise<AskResponse> {
+export async function getStatusSummary(entries: KnowledgeEntry[]): Promise<AskResponse> {
   const relevant = recentEntries(entries, 14);
   return postJson<AskResponse>("/api/ask", {
     question:
@@ -35,7 +37,9 @@ export async function getStatusSummary(): Promise<AskResponse> {
   });
 }
 
-export async function generateBeforeIVisitBriefing(): Promise<BeforeIVisitResponse> {
+export async function generateBeforeIVisitBriefing(
+  entries: KnowledgeEntry[],
+): Promise<BeforeIVisitResponse> {
   const relevant = recentEntries(entries, 21);
   return postJson<BeforeIVisitResponse>("/api/before-i-visit", {
     personName: lovedOne.preferredName,

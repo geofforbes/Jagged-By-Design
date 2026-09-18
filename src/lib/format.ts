@@ -21,6 +21,24 @@ export function formatRelative(iso: string, now: number = Date.now()): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+/** Group header label for the Journey feed: "Today" / "Yesterday" / weekday / "14 Sep". */
+export function dayLabel(iso: string, now: number = Date.now()): string {
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfThen = new Date(iso);
+  startOfThen.setHours(0, 0, 0, 0);
+  const dayDiff = Math.round((startOfToday.getTime() - startOfThen.getTime()) / 86_400_000);
+
+  if (dayDiff === 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff < 7) return new Date(iso).toLocaleDateString("en-GB", { weekday: "long" });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" });
+}
+
 export function formatDateTime(iso: string): string {
   const date = new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   const time = new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });

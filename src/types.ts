@@ -43,6 +43,8 @@ export interface KnowledgeEntry {
   /** Admin has explicitly approved this entry for a clinician summary. */
   clinicianApproved?: boolean;
   tags?: string[];
+  /** Display-only hint for the Memories screen; inferred if omitted. */
+  memoryKind?: "photo" | "story" | "voice";
 }
 
 export interface LifeFact {

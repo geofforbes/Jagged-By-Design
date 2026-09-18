@@ -14,6 +14,9 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-purple: var(--purple);
+  --color-purple-tint: var(--purple-tint);
+  --color-gold: var(--gold);
   --color-border: var(--border);
   --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) - 4px);
@@ -38,6 +41,9 @@
   --muted-foreground: #9b8f87;
   --accent: #c4714e;
   --accent-foreground: #ffffff;
+  --purple: #7b6aa4;
+  --purple-tint: #7b6aa420;
+  --gold: #c4a04e;
   --border: #e5ded5;
   --ring: #4a7b6a;
   --radius: 14px;
@@ -66,4 +72,36 @@ h1, h2, h3, h4 {
 }
 * {
   scrollbar-width: none;
+}
+
+.hide-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes bounce-dot {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+.dot-bounce {
+  animation: bounce-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.sheet-enter {
+  animation: slide-up 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fade-in 0.3s ease forwards;
 }
