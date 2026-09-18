@@ -1,5 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Quicksand", "system-ui", sans-serif;
+  --font-sans: "system-ui", sans-serif;
+
+  --color-warm-50: #fdf8f2;
+  --color-warm-100: #faeee0;
+  --color-warm-200: #f3dcc2;
+  --color-warm-300: #ecc9a0;
+
+  --color-coral-50: #fdf1eb;
+  --color-coral-100: #fbe2d4;
+  --color-coral-200: #f8c8ac;
+  --color-coral-300: #f5b498;
+  --color-coral-400: #f0916f;
+  --color-coral-500: #e57150;
+  --color-coral-600: #c9553a;
+  --color-coral-700: #a5432d;
+
+  --color-sage-50: #f1f7f3;
+  --color-sage-100: #e1eee7;
+  --color-sage-200: #c8e0d3;
+  --color-sage-300: #b7d4c4;
+  --color-sage-400: #8fb9a3;
+  --color-sage-500: #679b81;
+  --color-sage-600: #4f7d66;
+
+  --color-ink-500: #7a6d66;
+  --color-ink-600: #5f524c;
+  --color-ink-700: #4a3f3a;
+  --color-ink-800: #362d29;
+  --color-ink-900: #241d1a;
+
+  /* Cooler, more clinical palette reserved for carer/clinician-facing surfaces. */
+  --color-clinical-50: #f4f6f8;
+  --color-clinical-100: #e6ebf0;
+  --color-clinical-200: #d1dbe4;
+  --color-clinical-300: #aebccb;
+  --color-clinical-400: #8397a8;
+  --color-clinical-500: #5b7186;
+  --color-clinical-600: #46596c;
+  --color-clinical-700: #34495e;
+  --color-clinical-800: #263749;
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 * {
@@ -8,15 +54,11 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--color-warm-50);
+  color: var(--color-ink-800);
 }
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2rem;
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
 }
