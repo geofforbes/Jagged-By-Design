@@ -118,32 +118,28 @@ below) — instead, `scripts/process-export.ts` processes a WhatsApp
 same three modules: Care timeline, Life Story, and Calendar.
 
 ```bash
-npm run process-export -- <path-to-export.zip-or-folder> "<Loved One Name>" "Nickname1,Nickname2" [--limit=50]
+npm run process-export -- <path-to-export.zip-or-folder> "<Loved One Name>" "Nickname1,Nickname2" [--limit=50] [--since=YYYY-MM-DD]
 ```
 
 `--limit=N` processes only the first N messages — use it for a cheap dry run
 before committing to a full (slower, more expensive) pass over a large
 export.
 
-**Requires**, on top of `ANTHROPIC_API_KEY` and `DATABASE_URL` above:
-- `OPENAI_API_KEY` — used only for voice-note transcription (Whisper).
-  Claude doesn't take audio input, so this is a narrow, single-purpose
-  addition, not a competing LLM choice. Get one at
-  [platform.openai.com](https://platform.openai.com/api-keys).
-
+Uses `ANTHROPIC_API_KEY` and `DATABASE_URL` above — no other env vars needed.
 Since this is a local script rather than a deployed function, pull the
 Vercel-managed env vars down first: `vercel env pull .env.local`, then run
 with `node --env-file=.env.local` in front of the command above (or export
-them into your shell manually), plus `OPENAI_API_KEY` which lives only
-locally, not in Vercel.
+them into your shell manually).
 
 **Pipeline stages** (`scripts/lib/`):
 1. `parse-export.ts` — parses the export's chat `.txt` into
    `{sender, timestamp, text, attachmentFilename}`, handling both iOS and
    Android export formats and multi-line messages
 2. `media.ts` — turns each attachment into inline text: Claude vision for
-   photos, Whisper for voice notes, a placeholder note for videos (no
-   frame extraction in this pass — would need `ffmpeg`)
+   photos; voice notes and videos are flagged as present but not analyzed
+   (out of initial scope — voice notes would need a speech-to-text provider
+   beyond Claude, video would need `ffmpeg` frame extraction; both are
+   straightforward to add back later if there's time)
 3. `classify.ts` — groups messages into daily chunks and runs one Claude
    structured-output call per chunk, classifying relevant content into
    care/life-story/calendar items in a single pass (one message can produce

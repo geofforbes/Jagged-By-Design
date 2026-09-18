@@ -1,9 +1,13 @@
+import { Route, Routes } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import DemoPage from "./pages/DemoPage";
+
 function App() {
   return (
-    <main className="app">
-      <h1>Builder&apos;s Table</h1>
-      <p>Project scaffold is live. Build something great.</p>
-    </main>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/demo" element={<DemoPage />} />
+    </Routes>
   );
 }
 

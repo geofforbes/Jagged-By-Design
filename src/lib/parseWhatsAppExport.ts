@@ -1,10 +1,13 @@
 /**
- * Parses a WhatsApp "Export Chat" text file into structured messages.
+ * Client-side copy of scripts/lib/parse-export.ts (identical logic - no Node
+ * dependencies, so it runs the same in-browser). Kept as a separate file
+ * rather than a cross-project import to avoid Vite/tsc project-boundary
+ * friction; if the parsing rules change, update both.
  *
+ * Parses a WhatsApp "Export Chat" text file into structured messages.
  * Handles both date orderings seen across regions/app versions:
  *   DD/MM/YYYY, HH:MM[:SS] - Sender: text   (or "[..]" brackets, iOS)
  *   YYYY/MM/DD, HH:MM - Sender: text
- *
  * and both "." and "/" as the date separator, with or without seconds, and
  * with or without AM/PM. Lines with a timestamp prefix but no "Sender: text"
  * shape (group-created/added/left notices, encryption notices) are system
@@ -15,9 +18,7 @@ export interface ParsedWhatsAppMessage {
   timestamp: Date;
   sender: string;
   text: string;
-  /** Filename of an attached media file, present in the export folder. */
   attachmentFilename: string | null;
-  /** e.g. "media" when an attachment was referenced but not included in the export. */
   omittedMediaType: string | null;
 }
 
@@ -26,23 +27,14 @@ const DATE_TIME_PREFIX =
 
 const FULL_LINE_PATTERN = new RegExp(DATE_TIME_PREFIX.source + "([^:]+):\\s(.*)$");
 
-const ATTACHMENT_PATTERNS = [
-  /<attached:\s*(.+?)>/i, // iOS
-  /^(.+?\.\w+)\s*\(file attached\)$/i, // Android
-];
+const ATTACHMENT_PATTERNS = [/<attached:\s*(.+?)>/i, /^(.+?\.\w+)\s*\(file attached\)$/i];
 
 const OMITTED_PATTERN = /\b(image|video|audio|sticker|gif|document|media)\s+omitted\b/i;
 
-// Strips WhatsApp's invisible left-to-right/right-to-left marks, which otherwise break the regex.
 function cleanLine(line: string): string {
   return line.replace(/[‎‏]/g, "").trimEnd();
 }
 
-/**
- * Exactly one of the two outer date components is a 4-digit year; the other
- * is a day (max 31). Whichever exceeds 31 is unambiguously the year - this
- * disambiguates DD/MM/YYYY from YYYY/MM/DD without needing a locale hint.
- */
 function resolveDateParts(a: number, month: number, c: number): { day: number; month: number; year: number } {
   if (a > 31) {
     return { year: a, month, day: c };
@@ -77,9 +69,6 @@ export function parseWhatsAppExport(chatText: string): ParsedWhatsAppMessage[] {
 
     const fullMatch = FULL_LINE_PATTERN.exec(line);
     if (!fullMatch) {
-      // No "Sender: text" shape. Either a system notice with the same
-      // timestamp prefix (created group, added/left, encryption notice) -
-      // skip it - or a continuation line of the previous real message.
       if (DATE_TIME_PREFIX.test(line)) {
         continue;
       }
