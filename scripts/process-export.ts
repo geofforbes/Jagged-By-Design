@@ -3,7 +3,7 @@
  * into the three app modules' data: Care timeline, Life Story, Calendar.
  *
  * Usage:
- *   npx tsx scripts/process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=50]
+ *   npx tsx scripts/process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=50] [--since=YYYY-MM-DD]
  *
  * Requires DATABASE_URL, ANTHROPIC_API_KEY, and (for voice notes) OPENAI_API_KEY
  * in the environment - e.g. `vercel env pull .env.local` then
@@ -38,11 +38,12 @@ interface EnrichedMessage extends ParsedWhatsAppMessage {
 function parseArgs(argv: string[]) {
   const positional = argv.filter((a) => !a.startsWith("--"));
   const limitArg = argv.find((a) => a.startsWith("--limit="));
+  const sinceArg = argv.find((a) => a.startsWith("--since="));
   const [inputPath, lovedOneName, aliasesRaw] = positional;
 
   if (!inputPath || !lovedOneName) {
     console.error(
-      'Usage: process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=N]',
+      'Usage: process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=N] [--since=YYYY-MM-DD]',
     );
     process.exit(1);
   }
@@ -52,6 +53,7 @@ function parseArgs(argv: string[]) {
     lovedOneName,
     aliases: aliasesRaw ? aliasesRaw.split(",").map((a) => a.trim()) : [],
     limit: limitArg ? Number(limitArg.split("=")[1]) : undefined,
+    since: sinceArg ? new Date(sinceArg.split("=")[1]) : undefined,
   };
 }
 
@@ -106,7 +108,7 @@ async function enrichAttachments(
 }
 
 async function main() {
-  const { inputPath, lovedOneName, aliases, limit } = parseArgs(process.argv.slice(2));
+  const { inputPath, lovedOneName, aliases, limit, since } = parseArgs(process.argv.slice(2));
 
   console.log(`Loved one: ${lovedOneName} (aliases: ${aliases.join(", ") || "none"})`);
   await upsertLovedOne(lovedOneName, aliases);
@@ -117,6 +119,12 @@ async function main() {
 
   let parsed = parseWhatsAppExport(await readFile(chatFilePath, "utf-8"));
   console.log(`Parsed ${parsed.length} messages`);
+
+  if (since) {
+    const before = parsed.length;
+    parsed = parsed.filter((m) => m.timestamp >= since);
+    console.log(`Filtered to messages since ${since.toISOString().slice(0, 10)}: ${before} -> ${parsed.length}`);
+  }
 
   if (limit) {
     parsed = parsed.slice(0, limit);

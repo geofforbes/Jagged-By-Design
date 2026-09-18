@@ -118,7 +118,7 @@ below) — instead, `scripts/process-export.ts` processes a WhatsApp
 same three modules: Care timeline, Life Story, and Calendar.
 
 ```bash
-npm run process-export -- <path-to-export.zip-or-folder> "<Loved One Name>" "Nickname1,Nickname2" [--limit=50]
+npm run process-export -- <path-to-export.zip-or-folder> "<Loved One Name>" "Nickname1,Nickname2" [--limit=50] [--since=YYYY-MM-DD]
 ```
 
 `--limit=N` processes only the first N messages — use it for a cheap dry run
