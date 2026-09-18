@@ -65,7 +65,8 @@ body {
 .wa-phone {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   background: var(--wa-bg);
   border-radius: var(--cc-radius-lg);
   overflow: hidden;
@@ -158,7 +159,8 @@ body {
 
 /* Results preview (Care Co. styled) */
 .results {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px 4px 24px;
 }
@@ -391,4 +393,165 @@ body {
   to {
     transform: rotate(360deg);
   }
+}
+
+.demo-view-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.demo-view-btn {
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--cc-text-secondary);
+}
+
+.demo-view-btn-active {
+  background: var(--cc-accent-light);
+  color: var(--cc-accent);
+  border-color: var(--cc-accent);
+}
+
+/* App preview - the actual Care / Plan / Life Story screens, populated
+   live from the same structured output shown in the raw data view. */
+.cc-phone {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--cc-bg);
+  border-radius: var(--cc-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--cc-shadow);
+}
+
+.cc-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 14px 20px;
+}
+
+.cc-screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.cc-screen-header h2 {
+  font-size: 17px;
+  margin: 0;
+  color: var(--cc-text);
+}
+
+.cc-range-filter {
+  display: flex;
+  gap: 4px;
+}
+
+.cc-range-btn {
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  color: var(--cc-text-secondary);
+}
+
+.cc-range-btn-active {
+  background: var(--cc-accent);
+  border-color: var(--cc-accent);
+  color: white;
+}
+
+.cc-day-group {
+  margin-bottom: 14px;
+}
+
+.cc-day-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cc-text-secondary);
+  margin: 0 4px 6px;
+}
+
+.cc-mood-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.cc-showreel-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 16px;
+}
+
+.cc-showreel-card {
+  flex: 0 0 auto;
+  width: 160px;
+  background: linear-gradient(160deg, var(--cc-accent-light), var(--cc-surface));
+  border-radius: var(--cc-radius-md);
+  box-shadow: var(--cc-shadow);
+  padding: 12px;
+}
+
+.cc-showreel-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cc-accent);
+  margin-bottom: 6px;
+}
+
+.cc-showreel-card p {
+  font-size: 13px;
+  margin: 0;
+  color: var(--cc-text);
+  line-height: 1.35;
+}
+
+.cc-showreel-count {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--cc-text-secondary);
+}
+
+.cc-tabs {
+  display: flex;
+  border-top: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  flex-shrink: 0;
+}
+
+.cc-tab {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 12px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cc-text-secondary);
+  cursor: pointer;
+}
+
+.cc-tab-active {
+  color: var(--cc-accent);
 }

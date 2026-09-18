@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import WhatsAppMockup from "../components/WhatsAppMockup";
+import AppPreview from "../components/AppPreview";
 import ResultsPreview, { type DemoResults } from "../components/ResultsPreview";
 import { parseWhatsAppExport, type ParsedWhatsAppMessage } from "../lib/parseWhatsAppExport";
 
 type Phase = "idle" | "parsed" | "processing" | "done" | "error";
+type ResultsView = "app" | "data";
 
 // Total upload size this live demo accepts - surfaced here so an oversized
 // file gets a clear heads-up before processing starts, not just a rejection
@@ -20,6 +22,14 @@ const DEMO_MAX_MESSAGES = 150;
 // sends the upload as a sequence of small requests and merges the results.
 const BATCH_SIZE = 25;
 
+// Batches run concurrently, not one-at-a-time: each is a separate Vercel
+// invocation, not multiple Anthropic calls sharing one function's wall
+// clock (that's the earlier day-chunking case, where concurrency genuinely
+// didn't help). Awaiting them sequentially was the main reason a 6-batch
+// upload took 3+ minutes. Kept modest to stay well clear of Anthropic's
+// per-minute rate limits on a low-usage-tier account.
+const CONCURRENCY = 4;
+
 export default function DemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [messages, setMessages] = useState<ParsedWhatsAppMessage[]>([]);
@@ -30,6 +40,7 @@ export default function DemoPage() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [resultsView, setResultsView] = useState<ResultsView>("app");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleFile(file: File) {
@@ -87,22 +98,38 @@ export default function DemoPage() {
     const merged: DemoResults = { care: [], lifeStory: [], calendar: [] };
     let nextId = 1;
     let failedBatches = 0;
-    // Each batch is its own request, so one batch failing (e.g. the model
+    let doneCount = 0;
+
+    // A bounded worker pool, not Promise.all(batches.map(...)): that would
+    // fire every batch at once regardless of count, which is both an
+    // unbounded burst against Anthropic's rate limits and loses the
+    // "N of M" progress granularity. Each worker just keeps pulling the next
+    // unclaimed batch until none are left. One batch failing (e.g. the model
     // emitting a value outside a fixed enum - classifyChunk already retries
-    // once server-side) shouldn't discard everything already merged from the
-    // batches that succeeded. Skip it and keep going.
-    for (const batch of batches) {
-      try {
-        const batchResult = await classifyBatch(batch);
-        for (const item of batchResult.care) merged.care.push({ ...item, id: nextId++ });
-        for (const item of batchResult.lifeStory) merged.lifeStory.push({ ...item, id: nextId++ });
-        for (const item of batchResult.calendar) merged.calendar.push({ ...item, id: nextId++ });
-      } catch (err) {
-        failedBatches += 1;
-        console.error("Batch failed, skipping", err);
+    // once server-side) is caught per-worker and skipped, not left to
+    // discard everything else already merged.
+    let nextBatchIndex = 0;
+    async function worker() {
+      while (nextBatchIndex < batches.length) {
+        const batch = batches[nextBatchIndex++];
+        try {
+          const batchResult = await classifyBatch(batch);
+          for (const item of batchResult.care) merged.care.push({ ...item, id: nextId++ });
+          for (const item of batchResult.lifeStory) merged.lifeStory.push({ ...item, id: nextId++ });
+          for (const item of batchResult.calendar) merged.calendar.push({ ...item, id: nextId++ });
+        } catch (err) {
+          failedBatches += 1;
+          console.error("Batch failed, skipping", err);
+        }
+        doneCount += 1;
+        setBatchProgress({ done: doneCount, total: batches.length });
       }
-      setBatchProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
     }
+
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, batches.length) }, () => worker()),
+    );
+
     setBatchProgress(null);
     setResults(merged);
     setPhase("done");
@@ -204,7 +231,21 @@ export default function DemoPage() {
             {phase === "done" && results && (
               <>
                 {warning && <p className="demo-error">{warning}</p>}
-                <ResultsPreview results={results} />
+                <div className="demo-view-toggle">
+                  <button
+                    className={`demo-view-btn ${resultsView === "app" ? "demo-view-btn-active" : ""}`}
+                    onClick={() => setResultsView("app")}
+                  >
+                    In the app
+                  </button>
+                  <button
+                    className={`demo-view-btn ${resultsView === "data" ? "demo-view-btn-active" : ""}`}
+                    onClick={() => setResultsView("data")}
+                  >
+                    Raw structured data
+                  </button>
+                </div>
+                {resultsView === "app" ? <AppPreview results={results} /> : <ResultsPreview results={results} />}
               </>
             )}
           </div>

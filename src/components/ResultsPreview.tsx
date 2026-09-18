@@ -1,4 +1,4 @@
-interface CareItem {
+export interface CareItem {
   id: number;
   type: string;
   occurred_at: string;
@@ -7,7 +7,7 @@ interface CareItem {
   person_name: string;
 }
 
-interface LifeStoryItem {
+export interface LifeStoryItem {
   id: number;
   occurred_at: string | null;
   era_label: string | null;
@@ -15,7 +15,7 @@ interface LifeStoryItem {
   person_name: string;
 }
 
-interface CalendarItem {
+export interface CalendarItem {
   id: number;
   title: string;
   item_type: string;
