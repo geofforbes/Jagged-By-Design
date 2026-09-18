@@ -55,35 +55,6 @@ export async function describeImage(filePath: string, captionText?: string): Pro
   return textBlock?.type === "text" ? textBlock.text : "";
 }
 
-// OpenAI transcription model - update if this identifier becomes stale.
-const WHISPER_MODEL = "whisper-1";
-
-export async function transcribeAudio(filePath: string): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("Missing OPENAI_API_KEY env var (needed for voice note transcription)");
-  }
-
-  const fileBuffer = await readFile(filePath);
-  const form = new FormData();
-  form.append("file", new Blob([new Uint8Array(fileBuffer)]), path.basename(filePath));
-  form.append("model", WHISPER_MODEL);
-
-  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Whisper transcription failed (${response.status}): ${errorBody}`);
-  }
-
-  const result = (await response.json()) as { text: string };
-  return result.text;
-}
-
 /**
  * Best-effort description of any attachment, as plain text to fold into the
  * conversation before classification. Never throws - a failure just means
@@ -100,8 +71,9 @@ export async function describeAttachment(
       return `[Photo: ${description}]`;
     }
     if (kind === "audio") {
-      const transcript = await transcribeAudio(filePath);
-      return `[Voice note transcript: ${transcript}]`;
+      // Voice note transcription is out of initial scope (would need a
+      // speech-to-text provider beyond Claude) - just flag its presence.
+      return "[Voice note shared, not transcribed]";
     }
     if (kind === "video") {
       // No video-frame extraction in this pass (would need ffmpeg) - just
