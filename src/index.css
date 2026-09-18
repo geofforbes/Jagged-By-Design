@@ -1,51 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --font-display: "Quicksand", "system-ui", sans-serif;
-  --font-sans: "system-ui", sans-serif;
-
-  --color-warm-50: #fdf8f2;
-  --color-warm-100: #faeee0;
-  --color-warm-200: #f3dcc2;
-  --color-warm-300: #ecc9a0;
-
-  --color-coral-50: #fdf1eb;
-  --color-coral-100: #fbe2d4;
-  --color-coral-200: #f8c8ac;
-  --color-coral-300: #f5b498;
-  --color-coral-400: #f0916f;
-  --color-coral-500: #e57150;
-  --color-coral-600: #c9553a;
-  --color-coral-700: #a5432d;
-
-  --color-sage-50: #f1f7f3;
-  --color-sage-100: #e1eee7;
-  --color-sage-200: #c8e0d3;
-  --color-sage-300: #b7d4c4;
-  --color-sage-400: #8fb9a3;
-  --color-sage-500: #679b81;
-  --color-sage-600: #4f7d66;
-
-  --color-ink-500: #7a6d66;
-  --color-ink-600: #5f524c;
-  --color-ink-700: #4a3f3a;
-  --color-ink-800: #362d29;
-  --color-ink-900: #241d1a;
-
-  /* Cooler, more clinical palette reserved for carer/clinician-facing surfaces. */
-  --color-clinical-50: #f4f6f8;
-  --color-clinical-100: #e6ebf0;
-  --color-clinical-200: #d1dbe4;
-  --color-clinical-300: #aebccb;
-  --color-clinical-400: #8397a8;
-  --color-clinical-500: #5b7186;
-  --color-clinical-600: #46596c;
-  --color-clinical-700: #34495e;
-  --color-clinical-800: #263749;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, serif;
 }
 
 :root {
   color-scheme: light;
+  --background: #f8f5f1;
+  --foreground: #1a1714;
+  --card: #ffffff;
+  --card-foreground: #1a1714;
+  --primary: #4a7b6a;
+  --primary-foreground: #ffffff;
+  --secondary: #ede9e3;
+  --secondary-foreground: #3d3530;
+  --muted: #ede9e3;
+  --muted-foreground: #9b8f87;
+  --accent: #c4714e;
+  --accent-foreground: #ffffff;
+  --border: #e5ded5;
+  --ring: #4a7b6a;
+  --radius: 14px;
 }
 
 * {
@@ -55,10 +50,20 @@
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background-color: var(--color-warm-50);
-  color: var(--color-ink-800);
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4 {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+* {
+  scrollbar-width: none;
 }

@@ -4,8 +4,8 @@
   "description": "A shared family home for the dementia journey",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fdf8f2",
-  "theme_color": "#e57150",
+  "background_color": "#f8f5f1",
+  "theme_color": "#4a7b6a",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

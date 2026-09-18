@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { askKnowledgeBase, getStatusSummary } from "../lib/api";
+import { useNavigate } from "react-router-dom";
+import { getStatusSummary } from "../lib/api";
 import { entries } from "../data/entries";
 import { lovedOne } from "../data/lovedOne";
+import { avatarColor } from "../lib/avatarColor";
+import { formatRelative } from "../lib/format";
 import type { AskResponse } from "../types";
-import { CONTENT_KIND_LABEL } from "../lib/labels";
 
 const SUGGESTIONS = [
   "When did we last see her?",
@@ -13,27 +14,34 @@ const SUGGESTIONS = [
   "When's she free next?",
 ];
 
-const recentMoments = [...entries]
-  .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-  .slice(0, 3);
+const upcomingVisits = [
+  { name: "Ali", day: "Thu", color: "#C4714E" },
+  { name: "Pete", day: "Sat", color: "#4A7B6A" },
+  { name: "You", day: "Sun", color: "#6B7FD7" },
+];
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const sortedByDate = [...entries].sort(
+  (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+);
+const recentUpdates = sortedByDate.slice(0, 3);
+const lastVisit = sortedByDate.find((e) => e.category === "visit");
+const visitsThisWeek = entries.filter(
+  (e) => e.category === "visit" && Date.now() - new Date(e.occurredAt).getTime() < 7 * 86_400_000,
+).length;
+
+function todayLabel(): string {
+  return new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
 
 export function HomePage() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<AskResponse | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
-
   const [question, setQuestion] = useState("");
-  const [askLoading, setAskLoading] = useState(false);
-  const [askError, setAskError] = useState<string | null>(null);
-  const [answer, setAnswer] = useState<AskResponse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setStatusLoading(true);
     getStatusSummary()
       .then((res) => {
         if (!cancelled) setStatus(res);
@@ -49,149 +57,162 @@ export function HomePage() {
     };
   }, []);
 
-  async function runAsk(q: string) {
-    if (!q.trim() || askLoading) return;
-    setAskLoading(true);
-    setAskError(null);
-    setAnswer(null);
-    try {
-      setAnswer(await askKnowledgeBase(q));
-    } catch (err) {
-      setAskError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setAskLoading(false);
-    }
+  function askAndGo(q: string) {
+    if (!q.trim()) return;
+    navigate("/ask", { state: { initialQuestion: q } });
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="flex h-full flex-col overflow-y-auto pb-6">
+      <div className="px-5 pt-6 pb-4">
+        <p className="text-sm font-medium text-muted-foreground">{todayLabel()}</p>
+        <h1 className="mt-1 font-serif text-3xl leading-tight text-foreground">
+          How {lovedOne.preferredName}'s doing
+        </h1>
+      </div>
+
+      <div className="mx-5 mb-4 overflow-hidden rounded-2xl relative" style={{ background: "var(--primary)" }}>
         <img
           src={lovedOne.photoUrl}
-          alt={lovedOne.name}
-          className="h-12 w-12 rounded-full object-cover ring-2 ring-coral-200"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-20"
         />
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-coral-600">
-            How {lovedOne.preferredName} is doing
-          </p>
-          <p className="font-display text-lg font-semibold text-ink-900">Today</p>
+        <div className="relative p-5">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="h-14 w-14 overflow-hidden rounded-full border-2 border-white/30">
+              <img src={lovedOne.photoUrl} alt={lovedOne.name} className="h-full w-full object-cover" />
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-white/70">Caring for</p>
+              <p className="font-serif text-lg font-semibold leading-tight text-white">
+                {lovedOne.preferredName}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <div className="flex-1 rounded-xl bg-white/15 p-3">
+              <p className="mb-0.5 text-xs text-white/70">Circle of care</p>
+              <p className="text-sm font-semibold text-white">{lovedOne.circleOfCare.length} people</p>
+            </div>
+            <div className="flex-1 rounded-xl bg-white/15 p-3">
+              <p className="mb-0.5 text-xs text-white/70">Last visit</p>
+              <p className="text-sm font-semibold text-white">
+                {lastVisit ? formatRelative(lastVisit.occurredAt) : "—"}
+              </p>
+            </div>
+            <div className="flex-1 rounded-xl bg-white/15 p-3">
+              <p className="mb-0.5 text-xs text-white/70">This week</p>
+              <p className="text-sm font-semibold text-white">{visitsThisWeek} visits</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <section className="rounded-3xl bg-white p-5 shadow-sm">
+      <div className="mx-5 mb-4 rounded-2xl bg-card p-4 shadow-sm">
         {statusLoading && (
-          <div className="space-y-2 animate-pulse">
-            <div className="h-3 w-3/4 rounded bg-warm-100" />
-            <div className="h-3 w-full rounded bg-warm-100" />
-            <div className="h-3 w-2/3 rounded bg-warm-100" />
+          <div className="animate-pulse space-y-2">
+            <div className="h-3 w-3/4 rounded bg-muted" />
+            <div className="h-3 w-full rounded bg-muted" />
+            <div className="h-3 w-2/3 rounded bg-muted" />
           </div>
         )}
-
-        {!statusLoading && statusError && (
-          <p className="text-sm text-coral-700">{statusError}</p>
-        )}
-
+        {!statusLoading && statusError && <p className="text-sm text-accent">{statusError}</p>}
         {!statusLoading && status && (
-          <>
-            <p className="leading-relaxed text-ink-900">{status.answer}</p>
-            {status.citations.length > 0 && (
-              <p className="mt-3 text-xs text-ink-500">
-                Based on {status.citations.length} recent update
-                {status.citations.length === 1 ? "" : "s"} from the family and carers.
-              </p>
-            )}
-          </>
+          <p className="text-sm leading-relaxed text-secondary-foreground">{status.answer}</p>
         )}
-      </section>
+      </div>
 
-      <section className="space-y-3">
+      <div className="mx-5 mb-4">
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            runAsk(question);
+            askAndGo(question);
           }}
-          className="flex flex-col gap-2 rounded-2xl bg-white p-3 shadow-sm"
+          className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2"
         >
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask about her visits, mood, memories…"
-            className="rounded-xl border border-warm-200 px-4 py-2.5 text-ink-900 outline-none focus:border-coral-400"
+            placeholder={`Ask about ${lovedOne.preferredName}…`}
+            className="flex-1 bg-transparent text-sm text-foreground outline-none"
           />
           <button
             type="submit"
-            disabled={askLoading || !question.trim()}
-            className="rounded-xl bg-coral-500 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-coral-600 disabled:opacity-50"
+            disabled={!question.trim()}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-opacity disabled:opacity-40"
+            style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
           >
-            {askLoading ? "Thinking…" : "Ask"}
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
           </button>
         </form>
-
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
               type="button"
-              onClick={() => {
-                setQuestion(s);
-                runAsk(s);
-              }}
-              className="rounded-full bg-warm-100 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-warm-200"
+              onClick={() => askAndGo(s)}
+              className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground"
             >
               {s}
             </button>
           ))}
         </div>
+      </div>
 
-        {askError && (
-          <div className="rounded-2xl border border-coral-300 bg-coral-50 p-4 text-sm text-coral-700">
-            {askError}
-          </div>
-        )}
-
-        {answer && (
-          <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
-            <p className="text-ink-900">{answer.answer}</p>
-            {answer.citations.length > 0 && (
-              <ul className="space-y-1.5">
-                {answer.citations.map((c) => (
-                  <li key={c.entryId} className="flex items-center gap-2 text-sm text-ink-700">
-                    <span className="rounded-full bg-warm-100 px-2 py-0.5 text-xs font-semibold text-ink-700">
-                      {CONTENT_KIND_LABEL[c.contentKind]}
-                    </span>
-                    {c.title}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-ink-900">Recent moments</h2>
-          <Link to="/timeline" className="text-sm font-semibold text-coral-600">
-            See all
-          </Link>
-        </div>
-        <div className="space-y-2">
-          {recentMoments.map((entry) => (
-            <Link
-              key={entry.id}
-              to="/timeline"
-              className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3 shadow-sm"
+      <div className="mb-4 px-5">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Upcoming visits
+        </p>
+        <div className="flex gap-3">
+          {upcomingVisits.map((v) => (
+            <div
+              key={v.name}
+              className="flex flex-1 flex-col items-center gap-1.5 rounded-xl border border-border bg-card p-3"
             >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-ink-900">{entry.title}</p>
-                <p className="truncate text-xs text-ink-700">{entry.contributor}</p>
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
+                style={{ background: v.color }}
+              >
+                {v.name[0]}
               </div>
-              <span className="shrink-0 text-xs text-ink-500">{formatDate(entry.occurredAt)}</span>
-            </Link>
+              <p className="text-xs font-medium text-foreground">{v.name}</p>
+              <p className="text-xs text-muted-foreground">{v.day}</p>
+            </div>
           ))}
         </div>
-      </section>
+      </div>
+
+      <div className="px-5">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Recent updates
+        </p>
+        <div className="flex flex-col gap-3">
+          {recentUpdates.map((entry) => (
+            <div key={entry.id} className="w-full rounded-2xl border border-border bg-card p-4 text-left">
+              <div className="flex items-start gap-3">
+                <div
+                  className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                  style={{ background: avatarColor(entry.contributor) }}
+                >
+                  {entry.contributor[0]}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">{entry.contributor}</p>
+                    <p className="text-xs text-muted-foreground">{formatRelative(entry.occurredAt)}</p>
+                  </div>
+                  <p className="line-clamp-2 text-sm leading-relaxed text-secondary-foreground">
+                    {entry.body}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

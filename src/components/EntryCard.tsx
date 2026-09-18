@@ -2,6 +2,8 @@ import type { KnowledgeEntry, Role } from "../types";
 import { CARE_CATEGORIES } from "../types";
 import { canApproveForClinician, isApprovedForClinician, sourceLabel } from "../lib/permissions";
 import { CONTENT_KIND_LABEL } from "../lib/labels";
+import { avatarColor } from "../lib/avatarColor";
+import { formatRelative } from "../lib/format";
 
 const CATEGORY_ICON: Record<KnowledgeEntry["category"], string> = {
   visit: "👋",
@@ -13,14 +15,6 @@ const CATEGORY_ICON: Record<KnowledgeEntry["category"], string> = {
   appointment: "🩺",
 };
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-}
-
 interface EntryCardProps {
   entry: KnowledgeEntry;
   role: Role;
@@ -30,68 +24,80 @@ interface EntryCardProps {
 export function EntryCard({ entry, role, onToggleApprove }: EntryCardProps) {
   const isCare = CARE_CATEGORIES.includes(entry.category);
   const approved = isApprovedForClinician(entry);
+  const color = avatarColor(entry.contributor);
 
   return (
     <article
-      className={`rounded-2xl border p-4 shadow-sm ${
-        isCare
-          ? "border-clinical-100 bg-clinical-50"
-          : "border-coral-300/40 bg-white"
-      }`}
+      className="flex-1 overflow-hidden rounded-2xl border"
+      style={{
+        background: isCare ? "var(--secondary)" : "var(--card)",
+        borderColor: "var(--border)",
+      }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-ink-700">
-          <span aria-hidden>{CATEGORY_ICON[entry.category]}</span>
-          <span className="font-semibold capitalize">{entry.category}</span>
-          <span>·</span>
-          <span>{formatDate(entry.occurredAt)}</span>
-        </div>
-        <span
-          className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
-            isCare ? "bg-clinical-100 text-clinical-700" : "bg-coral-100 text-coral-600"
-          }`}
-        >
-          {CONTENT_KIND_LABEL[entry.contentKind]}
-        </span>
-      </div>
-
-      <h3 className="mt-2 font-display text-lg font-semibold text-ink-900">{entry.title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-ink-700">{entry.body}</p>
-
       {entry.photoUrl && (
-        <img
-          src={entry.photoUrl}
-          alt={entry.title}
-          className="mt-3 h-40 w-full rounded-xl object-cover"
-        />
+        <div className="h-36 overflow-hidden" style={{ background: "#e5ded5" }}>
+          <img src={entry.photoUrl} alt={entry.title} className="h-full w-full object-cover" />
+        </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-700/80">
-        <span>
-          {entry.contributor} · {sourceLabel(entry)}
-        </span>
-
-        <div className="flex items-center gap-2">
-          {approved && (
-            <span className="rounded-full bg-sage-300/60 px-2.5 py-1 font-semibold text-ink-800">
-              Shared with clinician
-            </span>
-          )}
-
-          {canApproveForClinician(role) && onToggleApprove && (
-            <button
-              type="button"
-              onClick={() => onToggleApprove(entry.id)}
-              className={`rounded-full border px-2.5 py-1 font-semibold transition-colors ${
-                approved
-                  ? "border-sage-500 text-sage-500 hover:bg-sage-50"
-                  : "border-clinical-300 text-clinical-700 hover:bg-clinical-100"
-              }`}
+      <div className="p-4">
+        <div className="mb-1.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
+              style={{ background: color }}
             >
-              {approved ? "Revoke clinician sharing" : "Approve for clinician summary"}
-            </button>
-          )}
+              {entry.contributor[0]}
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">{entry.contributor}</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm" aria-hidden>
+              {CATEGORY_ICON[entry.category]}
+            </span>
+            <p className="text-xs text-muted-foreground">{formatRelative(entry.occurredAt)}</p>
+          </div>
         </div>
+
+        <p className="mb-1 font-serif text-sm font-semibold text-foreground">{entry.title}</p>
+        <p className="text-sm leading-relaxed text-secondary-foreground">{entry.body}</p>
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
+            {entry.category}
+          </span>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {CONTENT_KIND_LABEL[entry.contentKind]}
+          </span>
+          <span className="text-xs text-muted-foreground">· {sourceLabel(entry)}</span>
+        </div>
+
+        {(approved || canApproveForClinician(role)) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {approved && (
+              <span
+                className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                style={{ background: "rgba(74,123,106,0.15)", color: "var(--primary)" }}
+              >
+                Shared with clinician
+              </span>
+            )}
+            {canApproveForClinician(role) && onToggleApprove && (
+              <button
+                type="button"
+                onClick={() => onToggleApprove(entry.id)}
+                className="rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors"
+                style={
+                  approved
+                    ? { borderColor: "var(--primary)", color: "var(--primary)" }
+                    : { borderColor: "var(--border)", color: "var(--foreground)" }
+                }
+              >
+                {approved ? "Revoke clinician sharing" : "Approve for clinician summary"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );

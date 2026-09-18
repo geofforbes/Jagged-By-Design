@@ -70,9 +70,18 @@ export interface AskResponse {
   citations: Citation[];
 }
 
+export type HighlightTone = "positive" | "practical" | "caution";
+
+export interface Highlight {
+  label: string;
+  text: string;
+  tone: HighlightTone;
+}
+
 export interface BeforeIVisitResponse {
-  briefing: string;
-  tryPrompt: string;
-  avoidPrompt: string;
+  summary: string;
+  highlights: Highlight[];
+  starters: string[];
+  avoid: string[];
   citations: Citation[];
 }
