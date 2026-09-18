@@ -116,15 +116,27 @@ export async function classifyChunk(
     .map((m) => `[#${m.index}] ${m.timestamp.toISOString()} ${m.sender}: ${m.text}`)
     .join("\n");
 
-  const response = await client.messages.parse({
+  const request = {
     model: CLAUDE_MODEL,
     max_tokens: 16000,
     system: systemPrompt(lovedOneName, lovedOneAliases),
-    messages: [{ role: "user", content: transcript }],
+    messages: [{ role: "user" as const, content: transcript }],
     output_config: {
       format: zodOutputFormat(ClassificationResultSchema),
     },
-  });
+  };
 
-  return response.parsed_output?.items ?? [];
+  try {
+    const response = await client.messages.parse(request);
+    return response.parsed_output?.items ?? [];
+  } catch (err) {
+    // Seen in production: the model occasionally emits a "type"/"mood" value
+    // outside the fixed enum (e.g. inventing one rather than picking a listed
+    // option), which fails Zod validation even under structured outputs.
+    // That's a stochastic slip, not a systematic prompt problem, so one retry
+    // is the fix rather than a schema/prompt change.
+    console.warn("classifyChunk: retrying after structured-output validation failure", err);
+    const response = await client.messages.parse(request);
+    return response.parsed_output?.items ?? [];
+  }
 }

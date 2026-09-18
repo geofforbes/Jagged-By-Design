@@ -28,6 +28,7 @@ export default function DemoPage() {
   const [aliases, setAliases] = useState("");
   const [results, setResults] = useState<DemoResults | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +76,7 @@ export default function DemoPage() {
     }
     setPhase("processing");
     setError(null);
+    setWarning(null);
 
     const batches: ParsedWhatsAppMessage[][] = [];
     for (let i = 0; i < messages.length; i += BATCH_SIZE) {
@@ -84,21 +86,30 @@ export default function DemoPage() {
 
     const merged: DemoResults = { care: [], lifeStory: [], calendar: [] };
     let nextId = 1;
-    try {
-      for (const batch of batches) {
+    let failedBatches = 0;
+    // Each batch is its own request, so one batch failing (e.g. the model
+    // emitting a value outside a fixed enum - classifyChunk already retries
+    // once server-side) shouldn't discard everything already merged from the
+    // batches that succeeded. Skip it and keep going.
+    for (const batch of batches) {
+      try {
         const batchResult = await classifyBatch(batch);
         for (const item of batchResult.care) merged.care.push({ ...item, id: nextId++ });
         for (const item of batchResult.lifeStory) merged.lifeStory.push({ ...item, id: nextId++ });
         for (const item of batchResult.calendar) merged.calendar.push({ ...item, id: nextId++ });
-        setBatchProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+      } catch (err) {
+        failedBatches += 1;
+        console.error("Batch failed, skipping", err);
       }
-      setResults(merged);
-      setPhase("done");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-      setPhase("parsed");
-    } finally {
-      setBatchProgress(null);
+      setBatchProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+    }
+    setBatchProgress(null);
+    setResults(merged);
+    setPhase("done");
+    if (failedBatches > 0) {
+      setWarning(
+        `${failedBatches} of ${batches.length} batches couldn't be processed and were skipped - results below are incomplete.`,
+      );
     }
   }
 
@@ -107,6 +118,7 @@ export default function DemoPage() {
     setMessages([]);
     setResults(null);
     setError(null);
+    setWarning(null);
     setLovedOneName("");
     setAliases("");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -189,7 +201,12 @@ export default function DemoPage() {
                 </p>
               </div>
             )}
-            {phase === "done" && results && <ResultsPreview results={results} />}
+            {phase === "done" && results && (
+              <>
+                {warning && <p className="demo-error">{warning}</p>}
+                <ResultsPreview results={results} />
+              </>
+            )}
           </div>
         </div>
       )}
