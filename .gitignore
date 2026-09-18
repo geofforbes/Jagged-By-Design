@@ -24,3 +24,10 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# WhatsApp chat exports contain real, identifiable family/health data - never
+# commit these, the media they contain, or the pipeline's generated output.
+/exports
+*.zip
+*-extracted/
+/output

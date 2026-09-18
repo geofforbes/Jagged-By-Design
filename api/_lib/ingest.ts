@@ -16,6 +16,7 @@ export async function ingestWhatsAppMessage(message: IncomingWhatsAppMessage): P
     fromWaId: message.fromWaId,
     fromName: message.fromName,
     body: message.text,
+    source: "whatsapp_webhook",
     receivedAt: occurredAt,
   });
 
