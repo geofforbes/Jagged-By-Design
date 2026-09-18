@@ -1,4 +1,4 @@
-export type Role = "family" | "admin";
+export type Role = "family" | "admin" | "clinician";
 
 export type EntryCategory =
   | "visit"
@@ -86,4 +86,38 @@ export interface BeforeIVisitResponse {
   starters: string[];
   avoid: string[];
   citations: Citation[];
+}
+
+/**
+ * A pattern or safety note surfaced for a clinician's own judgment —
+ * never a diagnosis or a staging assignment.
+ */
+export interface ClinicalNote {
+  label: string;
+  detail: string;
+}
+
+export interface ClinicalReportResponse {
+  summary: string;
+  patterns: ClinicalNote[];
+  safetyNotes: ClinicalNote[];
+  citations: Citation[];
+}
+
+export type RestrictionCategory = "mobility" | "cooking" | "outings" | "driving";
+
+export const RESTRICTION_LABELS: Record<RestrictionCategory, string> = {
+  mobility: "Independent mobility",
+  cooking: "Independent cooking",
+  outings: "Unsupervised outings",
+  driving: "Driving",
+};
+
+export interface DayPlan {
+  /** YYYY-MM-DD */
+  date: string;
+  /** true = restricted that day. Categories not present are unrestricted. */
+  restrictions: Partial<Record<RestrictionCategory, boolean>>;
+  note?: string;
+  setBy?: string;
 }

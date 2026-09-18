@@ -2,6 +2,7 @@ import type { Plugin } from "vite";
 import { readJsonBody } from "./http";
 import { runAsk } from "./ask";
 import { runBeforeIVisit } from "./briefing";
+import { runClinicalReport } from "./clinicalReport";
 
 /**
  * `vite dev` doesn't run the /api serverless functions Vercel would serve
@@ -30,6 +31,14 @@ export function apiDevMiddleware(): Plugin {
           if (req.url.startsWith("/api/before-i-visit")) {
             const body = await readJsonBody<Parameters<typeof runBeforeIVisit>[0]>(req);
             const result = await runBeforeIVisit(body);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(result));
+            return;
+          }
+
+          if (req.url.startsWith("/api/clinical-report")) {
+            const body = await readJsonBody<Parameters<typeof runClinicalReport>[0]>(req);
+            const result = await runClinicalReport(body);
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify(result));
             return;

@@ -25,6 +25,27 @@ const actionQuestions: Record<string, string> = {
   meds: "When was her medication last collected, and is anything due soon?",
 };
 
+const wellbeingNudges = [
+  "Hearing checks are worth doing for the whole family, not just as we get older — worth booking one if it's been a while.",
+  "Staying socially connected and keeping up regular sleep supports memory health at any age, for everyone in the circle.",
+  "If you've noticed changes in your own memory or concentration lately, mentioning it to a GP is a normal, sensible thing to do — not a big deal.",
+];
+
+function WellbeingCard({ onDismiss }: { onDismiss: () => void }) {
+  const nudge = wellbeingNudges[new Date().getDate() % wellbeingNudges.length];
+  return (
+    <div className="fade-in rounded-2xl p-4" style={{ background: "rgba(123,106,164,0.08)", border: "1px solid rgba(123,106,164,0.25)" }}>
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--purple)" }}>
+          For you &amp; the family circle
+        </p>
+        <button onClick={onDismiss} className="text-xs text-muted-foreground">✕</button>
+      </div>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--secondary-foreground)" }}>{nudge}</p>
+    </div>
+  );
+}
+
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-1 py-1">
@@ -150,6 +171,7 @@ export function CareCoPage() {
   const [msgs, setMsgs] = useState<ChatMsg[]>([{ id: 1, role: "ai", kind: "status", status: "loading" }]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [showWellbeing, setShowWellbeing] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const statusLoaded = useRef(false);
 
@@ -229,6 +251,7 @@ export function CareCoPage() {
       </div>
 
       <div ref={scrollRef} className="hide-scroll flex-1 space-y-3 overflow-y-auto px-4 py-3">
+        {showWellbeing && <WellbeingCard onDismiss={() => setShowWellbeing(false)} />}
         {msgs.map((msg) => {
           if (msg.role === "ai") {
             return (

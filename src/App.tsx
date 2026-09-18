@@ -4,6 +4,8 @@ import { TimelinePage } from "./pages/TimelinePage";
 import { CareCoPage } from "./pages/CareCoPage";
 import { MemoriesPage } from "./pages/MemoriesPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { CalendarPage } from "./pages/CalendarPage";
+import { ClinicalReportPage } from "./pages/ClinicalReportPage";
 
 function App() {
   return (
@@ -13,6 +15,8 @@ function App() {
         <Route path="care-co" element={<CareCoPage />} />
         <Route path="memories" element={<MemoriesPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="calendar" element={<CalendarPage />} />
+        <Route path="report" element={<ClinicalReportPage />} />
       </Route>
     </Routes>
   );

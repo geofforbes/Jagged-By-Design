@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.tsx";
 import { RoleProvider } from "./context/RoleContext";
 import { EntriesProvider } from "./context/EntriesContext";
+import { CalendarProvider } from "./context/CalendarContext";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -11,7 +12,9 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <RoleProvider>
         <EntriesProvider>
-          <App />
+          <CalendarProvider>
+            <App />
+          </CalendarProvider>
         </EntriesProvider>
       </RoleProvider>
     </BrowserRouter>

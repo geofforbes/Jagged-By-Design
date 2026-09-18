@@ -1,4 +1,4 @@
-import type { AskResponse, BeforeIVisitResponse, KnowledgeEntry } from "../types";
+import type { AskResponse, BeforeIVisitResponse, ClinicalReportResponse, KnowledgeEntry } from "../types";
 import { lovedOne } from "../data/lovedOne";
 import { retrieveEntries, recentEntries } from "./retrieval";
 
@@ -44,5 +44,18 @@ export async function generateBeforeIVisitBriefing(
   return postJson<BeforeIVisitResponse>("/api/before-i-visit", {
     personName: lovedOne.preferredName,
     entries: relevant,
+  });
+}
+
+/**
+ * Clinical report is built ONLY from admin-approved entries — the caller
+ * is responsible for filtering to `clinicianApproved` before calling this.
+ */
+export async function generateClinicalReport(
+  approvedEntries: KnowledgeEntry[],
+): Promise<ClinicalReportResponse> {
+  return postJson<ClinicalReportResponse>("/api/clinical-report", {
+    personName: lovedOne.preferredName,
+    entries: approvedEntries,
   });
 }
