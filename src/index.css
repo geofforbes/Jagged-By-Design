@@ -354,6 +354,12 @@ body {
   opacity: 0.9;
 }
 
+.demo-process-button:disabled {
+  background: var(--cc-border);
+  color: var(--cc-text-secondary);
+  cursor: not-allowed;
+}
+
 .demo-error {
   color: var(--cc-tag-emergency-text);
   font-size: 13px;
