@@ -3,15 +3,21 @@
  * into the three app modules' data: Care timeline, Life Story, Calendar.
  *
  * Usage:
- *   npx tsx scripts/process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=50] [--since=YYYY-MM-DD]
+ *   npx tsx scripts/process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=50] [--since=YYYY-MM-DD] [--skip-db]
  *
- * Requires DATABASE_URL, ANTHROPIC_API_KEY, and (for voice notes) OPENAI_API_KEY
- * in the environment - e.g. `vercel env pull .env.local` then
+ * Requires DATABASE_URL and ANTHROPIC_API_KEY in the environment - e.g.
+ * `vercel env pull .env.local` then
  * `node --env-file=.env.local --import tsx scripts/process-export.ts ...`
  *
  * Writes to Postgres (same tables the live webhook uses) AND to
  * output/{care-timeline,life-story,calendar}.json, so the frontend can be
  * wired up against static fixtures immediately without waiting on the DB.
+ *
+ * --skip-db runs parsing/media/classification and writes only the JSON
+ * files, with synthetic sequential ids instead of DB-assigned ones - useful
+ * when Postgres isn't reachable from wherever this is being run (e.g. a
+ * sandboxed environment whose network egress policy doesn't allow the DB
+ * host), without blocking on that to validate the pipeline itself.
  */
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
@@ -43,7 +49,7 @@ function parseArgs(argv: string[]) {
 
   if (!inputPath || !lovedOneName) {
     console.error(
-      'Usage: process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=N] [--since=YYYY-MM-DD]',
+      'Usage: process-export.ts <path-to-export.zip-or-folder> "<Loved One Name>" ["Nickname1,Nickname2"] [--limit=N] [--since=YYYY-MM-DD] [--skip-db]',
     );
     process.exit(1);
   }
@@ -54,6 +60,7 @@ function parseArgs(argv: string[]) {
     aliases: aliasesRaw ? aliasesRaw.split(",").map((a) => a.trim()) : [],
     limit: limitArg ? Number(limitArg.split("=")[1]) : undefined,
     since: sinceArg ? new Date(sinceArg.split("=")[1]) : undefined,
+    skipDb: argv.includes("--skip-db"),
   };
 }
 
@@ -108,10 +115,42 @@ async function enrichAttachments(
 }
 
 async function main() {
-  const { inputPath, lovedOneName, aliases, limit, since } = parseArgs(process.argv.slice(2));
+  const { inputPath, lovedOneName, aliases, limit, since, skipDb } = parseArgs(process.argv.slice(2));
+
+  // In --skip-db mode, every "save" below assigns a synthetic sequential id
+  // and skips the network call, instead of writing to Postgres.
+  let nextPersonId = 1;
+  let nextMessageId = 1;
+  let nextCareId = 1;
+  let nextLifeStoryId = 1;
+  let nextCalendarId = 1;
+  const personIdByName = new Map<string, number>();
+
+  async function resolvePersonId(name: string): Promise<number> {
+    if (skipDb) {
+      if (!personIdByName.has(name)) personIdByName.set(name, nextPersonId++);
+      return personIdByName.get(name)!;
+    }
+    return (await getOrCreatePersonByName(name)).id;
+  }
+
+  async function saveMessage(params: {
+    fromName: string;
+    body?: string;
+    receivedAt: Date;
+  }): Promise<number> {
+    if (skipDb) return nextMessageId++;
+    return (
+      await insertMessage({ ...params, source: "export" })
+    ).id;
+  }
 
   console.log(`Loved one: ${lovedOneName} (aliases: ${aliases.join(", ") || "none"})`);
-  await upsertLovedOne(lovedOneName, aliases);
+  if (skipDb) {
+    console.log("--skip-db set: writing output/*.json only, no Postgres writes");
+  } else {
+    await upsertLovedOne(lovedOneName, aliases);
+  }
 
   const folder = await resolveExportFolder(inputPath);
   const chatFilePath = await findChatFile(folder);
@@ -139,16 +178,14 @@ async function main() {
   const enriched: EnrichedMessage[] = [];
   for (const message of parsed) {
     if (!personCache.has(message.sender)) {
-      const person = await getOrCreatePersonByName(message.sender);
-      personCache.set(message.sender, person.id);
+      personCache.set(message.sender, await resolvePersonId(message.sender));
     }
-    const saved = await insertMessage({
+    const dbMessageId = await saveMessage({
       fromName: message.sender,
       body: message.text,
-      source: "export",
       receivedAt: message.timestamp,
     });
-    enriched.push({ ...message, dbMessageId: saved.id });
+    enriched.push({ ...message, dbMessageId });
   }
 
   const chunks = new Map<string, EnrichedMessage[]>();
@@ -191,36 +228,81 @@ async function main() {
         continue;
       }
       const personId = personCache.get(sourceMessage.sender) ?? null;
+      const personName = sourceMessage.sender;
 
       if (item.category === "care") {
-        const saved = await insertEvent({
+        const base = {
           type: item.type as EventType,
-          occurredAt: sourceMessage.timestamp,
+          occurred_at: sourceMessage.timestamp.toISOString(),
           summary: item.summary,
           mood: item.mood as Mood | null,
-          personId,
-          source: "export",
-          sourceMessageId: sourceMessage.dbMessageId,
-        });
+          person_id: personId,
+          person_name: personName,
+          source: "export" as const,
+          source_message_id: sourceMessage.dbMessageId,
+        };
+        const saved = skipDb
+          ? { id: nextCareId++, ...base }
+          : {
+              ...(await insertEvent({
+                type: base.type,
+                occurredAt: sourceMessage.timestamp,
+                summary: base.summary,
+                mood: base.mood,
+                personId,
+                source: "export",
+                sourceMessageId: sourceMessage.dbMessageId,
+              })),
+              person_name: personName,
+            };
         careTimeline.push(saved);
       } else if (item.category === "life_story") {
-        const saved = await insertLifeStoryItem({
-          occurredAt: item.isHistorical ? null : sourceMessage.timestamp,
-          eraLabel: item.eraLabel,
+        const occurredAt = item.isHistorical ? null : sourceMessage.timestamp;
+        const base = {
+          occurred_at: occurredAt?.toISOString() ?? null,
+          era_label: item.eraLabel,
           summary: item.summary,
-          source: "export",
-          sourceMessageId: sourceMessage.dbMessageId,
-        });
+          person_name: personName,
+          source: "export" as const,
+          source_message_id: sourceMessage.dbMessageId,
+        };
+        const saved = skipDb
+          ? { id: nextLifeStoryId++, ...base }
+          : {
+              ...(await insertLifeStoryItem({
+                occurredAt,
+                eraLabel: item.eraLabel,
+                summary: item.summary,
+                source: "export",
+                sourceMessageId: sourceMessage.dbMessageId,
+              })),
+              person_name: personName,
+            };
         lifeStory.push(saved);
       } else {
-        const saved = await insertCalendarItem({
+        const dueAt = item.dueDate ? new Date(item.dueDate) : null;
+        const base = {
           title: item.title,
-          itemType: item.itemType,
-          dueAt: item.dueDate ? new Date(item.dueDate) : null,
+          item_type: item.itemType,
+          due_at: dueAt?.toISOString() ?? null,
           notes: item.notes,
-          source: "export",
-          sourceMessageId: sourceMessage.dbMessageId,
-        });
+          person_name: personName,
+          source: "export" as const,
+          source_message_id: sourceMessage.dbMessageId,
+        };
+        const saved = skipDb
+          ? { id: nextCalendarId++, ...base }
+          : {
+              ...(await insertCalendarItem({
+                title: item.title,
+                itemType: item.itemType,
+                dueAt,
+                notes: item.notes,
+                source: "export",
+                sourceMessageId: sourceMessage.dbMessageId,
+              })),
+              person_name: personName,
+            };
         calendar.push(saved);
       }
     }
@@ -234,7 +316,7 @@ async function main() {
   console.log(
     `Done. ${careTimeline.length} care events, ${lifeStory.length} life story items, ${calendar.length} calendar items.`,
   );
-  console.log("Written to output/*.json and to Postgres.");
+  console.log(skipDb ? "Written to output/*.json only (--skip-db)." : "Written to output/*.json and to Postgres.");
 }
 
 main().catch((err) => {

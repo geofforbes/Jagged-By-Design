@@ -66,23 +66,35 @@ Family members share messages, photos, and voice notes; photos and voice notes h
 already been converted to bracketed text descriptions inline, e.g. "[Photo: ...]" or
 "[Voice note transcript: ...]".
 
-Classify every relevant piece of conversation into one or more of three categories.
+This is a large family group chat, not a dedicated care channel - most messages are
+ordinary family chatter (other people's birthdays, unrelated logistics, jokes) that
+has nothing to do with ${lovedOneName}. Only extract an item when the message is
+actually about ${lovedOneName} specifically: she is the visitor's destination, the
+subject of the observation, present in a shared photo, or the memory concerns her
+life. A message about someone else's birthday, an unrelated trip, or general group
+banter is not an item, even if a family member appears in it - skip it entirely.
+
+Classify each relevant piece of conversation into one or more of three categories.
 A single message can produce multiple items across categories (e.g. "Taking Mum to
 Dr. Patel Tuesday, she's forgetting her pills" is both a "care" observation about
 forgetfulness AND a "calendar" appointment).
 
-1. "care" - dementia-relevant observations: mood, confusion, memory, good/bad days,
-   eating, sleeping, medication/pharmacy events, appointments that already happened,
-   visits. Never infer a medical diagnosis or conclusion the message doesn't state.
-2. "life_story" - day-to-day moments worth remembering (not clinical), and memories
-   or life history surfaced in conversation (childhood, past places, relationships).
-   Set isHistorical true only for the latter, with a short eraLabel.
-3. "calendar" - upcoming commitments (visits, trips, appointments not yet happened)
-   and to-dos/tasks mentioned (e.g. "she needs new shoes").
+1. "care" - dementia-relevant observations about ${lovedOneName}: mood, confusion,
+   memory, good/bad days, eating, sleeping, medication/pharmacy events, appointments
+   that already happened, visits to her. Never infer a medical diagnosis or
+   conclusion the message doesn't state.
+2. "life_story" - day-to-day moments involving ${lovedOneName} worth remembering
+   (not clinical), and memories or life history about her surfaced in conversation
+   (her childhood, past places, relationships). Set isHistorical true only for the
+   latter, with a short eraLabel.
+3. "calendar" - upcoming commitments involving ${lovedOneName} (visits to her, trips
+   with her, appointments not yet happened) and to-dos concerning her (e.g. "she
+   needs new shoes").
 
 Skip pure logistics with no care/life/calendar content (e.g. "ok", "👍", "see you then"
-with no other detail). Every item must include sourceMessageIndex, the #N tag of the
-message it came from. Never invent details the conversation doesn't support.`;
+with no other detail), and skip anything not actually about ${lovedOneName} per above.
+Every item must include sourceMessageIndex, the #N tag of the message it came from.
+Never invent details the conversation doesn't support.`;
 }
 
 /**
