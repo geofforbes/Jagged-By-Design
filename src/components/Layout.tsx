@@ -1,71 +1,80 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Link, Outlet } from "react-router-dom";
 import { useRole } from "../context/RoleContext";
 import { lovedOne } from "../data/lovedOne";
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-    isActive
-      ? "bg-coral-500 text-white shadow-sm"
-      : "text-ink-700 hover:bg-warm-100"
-  }`;
+const TABS = [
+  { to: "/", end: true, icon: "🏠", label: "Home" },
+  { to: "/timeline", icon: "📖", label: "Timeline" },
+  { to: "/before-i-visit", icon: "🌤️", label: "Visit" },
+  { to: "/profile", icon: "👤", label: "Profile" },
+];
 
 export function Layout() {
   const { role, setRole } = useRole();
 
   return (
-    <div className="min-h-screen bg-warm-50">
-      <header className="border-b border-warm-200 bg-warm-50/90 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <NavLink to="/" className="flex items-center gap-2">
-            <span className="text-2xl">🌿</span>
-            <span className="font-display text-xl font-semibold text-ink-900">Circle</span>
-            <span className="text-sm text-ink-700">· {lovedOne.preferredName}</span>
-          </NavLink>
-
-          <nav className="flex flex-wrap gap-1">
-            <NavLink to="/" end className={navLinkClass}>
-              Home
-            </NavLink>
-            <NavLink to="/timeline" className={navLinkClass}>
-              Timeline
-            </NavLink>
-            <NavLink to="/ask" className={navLinkClass}>
-              Ask
-            </NavLink>
-            <NavLink to="/before-i-visit" className={navLinkClass}>
-              Before I Visit
-            </NavLink>
-          </nav>
+    <div className="flex min-h-screen justify-center bg-warm-200/60 sm:py-4">
+      <div className="flex h-screen w-full max-w-md flex-col overflow-hidden bg-warm-50 sm:h-[calc(100vh-2rem)] sm:rounded-[2.5rem] sm:border sm:border-warm-200 sm:shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-warm-200 bg-warm-50/95 px-4 py-3 backdrop-blur">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="text-xl" aria-hidden>
+              🌿
+            </span>
+            <div className="leading-tight">
+              <p className="font-display text-base font-semibold text-ink-900">Circle</p>
+              <p className="text-xs text-ink-700">{lovedOne.preferredName}</p>
+            </div>
+          </Link>
 
           <div
-            className="flex items-center gap-2 self-start rounded-full border border-warm-200 bg-white p-1 text-xs font-semibold sm:self-auto"
+            className="flex items-center gap-1 rounded-full border border-warm-200 bg-white p-1 text-xs font-semibold"
             title="Demo-only role switch — stands in for real authentication."
           >
             <button
               type="button"
               onClick={() => setRole("family")}
-              className={`rounded-full px-3 py-1.5 transition-colors ${
+              className={`rounded-full px-2.5 py-1 transition-colors ${
                 role === "family" ? "bg-sage-400 text-white" : "text-ink-700"
               }`}
             >
-              Family view
+              Family
             </button>
             <button
               type="button"
               onClick={() => setRole("admin")}
-              className={`rounded-full px-3 py-1.5 transition-colors ${
+              className={`rounded-full px-2.5 py-1 transition-colors ${
                 role === "admin" ? "bg-clinical-700 text-white" : "text-ink-700"
               }`}
             >
-              Admin view
+              Admin
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <Outlet />
-      </main>
+        <main className="flex-1 overflow-y-auto px-4 py-5">
+          <Outlet />
+        </main>
+
+        <nav className="flex shrink-0 items-stretch justify-around border-t border-warm-200 bg-white pb-[max(env(safe-area-inset-bottom),0.375rem)] pt-1.5">
+          {TABS.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.end}
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold transition-colors ${
+                  isActive ? "text-coral-600" : "text-ink-500"
+                }`
+              }
+            >
+              <span className="text-lg" aria-hidden>
+                {tab.icon}
+              </span>
+              {tab.label}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
     </div>
   );
 }

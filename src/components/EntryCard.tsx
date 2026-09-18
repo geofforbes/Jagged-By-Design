@@ -1,6 +1,7 @@
 import type { KnowledgeEntry, Role } from "../types";
 import { CARE_CATEGORIES } from "../types";
 import { canApproveForClinician, isApprovedForClinician, sourceLabel } from "../lib/permissions";
+import { CONTENT_KIND_LABEL } from "../lib/labels";
 
 const CATEGORY_ICON: Record<KnowledgeEntry["category"], string> = {
   visit: "👋",
@@ -10,12 +11,6 @@ const CATEGORY_ICON: Record<KnowledgeEntry["category"], string> = {
   pharmacy: "💊",
   memory: "🌿",
   appointment: "🩺",
-};
-
-const CONTENT_KIND_LABEL: Record<KnowledgeEntry["contentKind"], string> = {
-  fact: "Recorded fact",
-  "family-observation": "Family observation",
-  "ai-summary": "AI-generated summary",
 };
 
 function formatDate(iso: string): string {

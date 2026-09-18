@@ -1,94 +1,196 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { askKnowledgeBase, getStatusSummary } from "../lib/api";
+import { entries } from "../data/entries";
 import { lovedOne } from "../data/lovedOne";
+import type { AskResponse } from "../types";
+import { CONTENT_KIND_LABEL } from "../lib/labels";
 
-const currentYear = new Date().getFullYear();
-
-const quickLinks = [
-  {
-    to: "/timeline",
-    icon: "📖",
-    title: "Family timeline",
-    body: "Visits, photos, moods and moments — the story of the last few weeks.",
-  },
-  {
-    to: "/ask",
-    icon: "💬",
-    title: "Ask",
-    body: `Ask anything about how ${lovedOne.preferredName} has been doing.`,
-  },
-  {
-    to: "/before-i-visit",
-    icon: "🌤️",
-    title: "Before I Visit",
-    body: "Get a warm catch-up and gentle conversation ideas before you go.",
-  },
+const SUGGESTIONS = [
+  "When did we last see her?",
+  "What was she last chatting about?",
+  "What are good questions to ask her?",
+  "When's she free next?",
 ];
 
+const recentMoments = [...entries]
+  .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+  .slice(0, 3);
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 export function HomePage() {
+  const [status, setStatus] = useState<AskResponse | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  const [question, setQuestion] = useState("");
+  const [askLoading, setAskLoading] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+  const [answer, setAnswer] = useState<AskResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatusLoading(true);
+    getStatusSummary()
+      .then((res) => {
+        if (!cancelled) setStatus(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setStatusError(err instanceof Error ? err.message : "Couldn't load a status update.");
+      })
+      .finally(() => {
+        if (!cancelled) setStatusLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function runAsk(q: string) {
+    if (!q.trim() || askLoading) return;
+    setAskLoading(true);
+    setAskError(null);
+    setAnswer(null);
+    try {
+      setAnswer(await askKnowledgeBase(q));
+    } catch (err) {
+      setAskError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setAskLoading(false);
+    }
+  }
+
   return (
-    <div className="space-y-10">
-      <section className="flex flex-col items-center gap-6 rounded-3xl bg-white p-8 text-center shadow-sm sm:flex-row sm:text-left">
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
         <img
           src={lovedOne.photoUrl}
           alt={lovedOne.name}
-          className="h-32 w-32 rounded-full object-cover ring-4 ring-coral-200 sm:h-40 sm:w-40"
+          className="h-12 w-12 rounded-full object-cover ring-2 ring-coral-200"
         />
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-coral-600">
-            The centre of our circle
+          <p className="text-xs font-semibold uppercase tracking-wide text-coral-600">
+            How {lovedOne.preferredName} is doing
           </p>
-          <h1 className="font-display text-3xl font-bold text-ink-900 sm:text-4xl">
-            {lovedOne.name}
-          </h1>
-          <p className="mt-1 text-ink-700">
-            {lovedOne.preferredName} · born {lovedOne.birthYear} ({currentYear - lovedOne.birthYear}{" "}
-            years old)
-          </p>
+          <p className="font-display text-lg font-semibold text-ink-900">Today</p>
         </div>
-      </section>
+      </div>
 
-      <section>
-        <h2 className="mb-3 font-display text-xl font-semibold text-ink-900">
-          Who {lovedOne.preferredName} is
-        </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {lovedOne.lifeFacts.map((fact) => (
-            <div key={fact.label} className="rounded-2xl bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-sage-600">
-                {fact.label}
+      <section className="rounded-3xl bg-white p-5 shadow-sm">
+        {statusLoading && (
+          <div className="space-y-2 animate-pulse">
+            <div className="h-3 w-3/4 rounded bg-warm-100" />
+            <div className="h-3 w-full rounded bg-warm-100" />
+            <div className="h-3 w-2/3 rounded bg-warm-100" />
+          </div>
+        )}
+
+        {!statusLoading && statusError && (
+          <p className="text-sm text-coral-700">{statusError}</p>
+        )}
+
+        {!statusLoading && status && (
+          <>
+            <p className="leading-relaxed text-ink-900">{status.answer}</p>
+            {status.citations.length > 0 && (
+              <p className="mt-3 text-xs text-ink-500">
+                Based on {status.citations.length} recent update
+                {status.citations.length === 1 ? "" : "s"} from the family and carers.
               </p>
-              <p className="mt-1 text-ink-800">{fact.value}</p>
-            </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            runAsk(question);
+          }}
+          className="flex flex-col gap-2 rounded-2xl bg-white p-3 shadow-sm"
+        >
+          <input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask about her visits, mood, memories…"
+            className="rounded-xl border border-warm-200 px-4 py-2.5 text-ink-900 outline-none focus:border-coral-400"
+          />
+          <button
+            type="submit"
+            disabled={askLoading || !question.trim()}
+            className="rounded-xl bg-coral-500 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-coral-600 disabled:opacity-50"
+          >
+            {askLoading ? "Thinking…" : "Ask"}
+          </button>
+        </form>
+
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => {
+                setQuestion(s);
+                runAsk(s);
+              }}
+              className="rounded-full bg-warm-100 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-warm-200"
+            >
+              {s}
+            </button>
           ))}
         </div>
+
+        {askError && (
+          <div className="rounded-2xl border border-coral-300 bg-coral-50 p-4 text-sm text-coral-700">
+            {askError}
+          </div>
+        )}
+
+        {answer && (
+          <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
+            <p className="text-ink-900">{answer.answer}</p>
+            {answer.citations.length > 0 && (
+              <ul className="space-y-1.5">
+                {answer.citations.map((c) => (
+                  <li key={c.entryId} className="flex items-center gap-2 text-sm text-ink-700">
+                    <span className="rounded-full bg-warm-100 px-2 py-0.5 text-xs font-semibold text-ink-700">
+                      {CONTENT_KIND_LABEL[c.contentKind]}
+                    </span>
+                    {c.title}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </section>
 
       <section>
-        <h2 className="mb-3 font-display text-xl font-semibold text-ink-900">Circle of care</h2>
-        <div className="flex flex-wrap gap-2">
-          {lovedOne.circleOfCare.map((person) => (
-            <span
-              key={person.name}
-              className="rounded-full bg-warm-100 px-4 py-2 text-sm text-ink-700"
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold text-ink-900">Recent moments</h2>
+          <Link to="/timeline" className="text-sm font-semibold text-coral-600">
+            See all
+          </Link>
+        </div>
+        <div className="space-y-2">
+          {recentMoments.map((entry) => (
+            <Link
+              key={entry.id}
+              to="/timeline"
+              className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3 shadow-sm"
             >
-              <span className="font-semibold text-ink-900">{person.name}</span> · {person.relationship}
-            </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink-900">{entry.title}</p>
+                <p className="truncate text-xs text-ink-700">{entry.contributor}</p>
+              </div>
+              <span className="shrink-0 text-xs text-ink-500">{formatDate(entry.occurredAt)}</span>
+            </Link>
           ))}
         </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {quickLinks.map((link) => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className="rounded-2xl border border-warm-200 bg-white p-5 shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="text-2xl">{link.icon}</div>
-            <h3 className="mt-2 font-display text-lg font-semibold text-ink-900">{link.title}</h3>
-            <p className="mt-1 text-sm text-ink-700">{link.body}</p>
-          </Link>
-        ))}
       </section>
     </div>
   );
