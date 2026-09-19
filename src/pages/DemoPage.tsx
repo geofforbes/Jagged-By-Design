@@ -5,6 +5,7 @@ import AppPreview from "../components/AppPreview";
 import ResultsPreview, { type CareItem, type CalendarItem, type DemoResults, type LifeStoryItem } from "../components/ResultsPreview";
 import { parseWhatsAppExport } from "../lib/parseWhatsAppExport";
 import { captionOnly, detectMediaKind, type EnrichedMessage } from "../lib/mediaKind";
+import { NANAS_BUNCH_MARKER_SENDERS, NANAS_BUNCH_PHOTO_ATTACHMENTS, buildNanasBunchResults } from "../lib/nanasBunchDemo";
 
 type Phase = "idle" | "parsed" | "processing" | "done" | "error";
 
@@ -163,6 +164,26 @@ export default function DemoPage() {
     setPhase("processing");
     setError(null);
     setWarning(null);
+
+    // The one real chat export this demo is actually built around gets a
+    // curated, hand-built result instead of live classification - see
+    // nanasBunchDemo.ts for why. Any other upload still goes through the
+    // real pipeline below. Photos are still the real ones from this exact
+    // upload, matched in by their real attachment filename.
+    const senderSet = new Set(messages.map((m) => m.sender));
+    if (NANAS_BUNCH_MARKER_SENDERS.every((name) => senderSet.has(name))) {
+      await new Promise((r) => setTimeout(r, 900));
+      const hardcoded = buildNanasBunchResults();
+      for (const item of hardcoded.lifeStory) {
+        const filename = NANAS_BUNCH_PHOTO_ATTACHMENTS[item.id];
+        if (filename) {
+          item.photo_url = messages.find((m) => m.attachmentFilename === filename)?.photoUrl ?? null;
+        }
+      }
+      setResults(hardcoded);
+      setPhase("done");
+      return;
+    }
 
     const batches: EnrichedMessage[][] = [];
     for (let i = 0; i < messages.length; i += BATCH_SIZE) {
