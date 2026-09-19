@@ -37,6 +37,16 @@
   --wa-bubble-in: #ffffff;
   --wa-accent: #25d366;
   --wa-text-secondary: #667781;
+
+  /* Mosaic brand palette - sampled directly from the Mosaic logo mark.
+     Used for the demo page's own chrome (header, options, info box) - the
+     wa-/co- mockup palettes above stay untouched since those are exact
+     reproductions of the real app/chat bundles. */
+  --mosaic-ink: #1c1c1a;
+  --mosaic-forest: #2d5c4f;
+  --mosaic-sage: #4a8a79;
+  --mosaic-terracotta: #c47b40;
+  --mosaic-cream: #dcd7cd;
 }
 
 * {
@@ -357,18 +367,22 @@ body {
 
 .demo-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+  gap: 16px;
 }
 
-.demo-eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--cc-accent);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin: 0 0 4px;
+.demo-header-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo-logo {
+  height: 30px;
+  width: auto;
+  display: block;
 }
 
 .demo-header h1 {
@@ -394,11 +408,61 @@ body {
   color: var(--cc-accent);
 }
 
-.demo-upload {
+.demo-idle-error {
+  margin: 0 0 16px;
+}
+
+.demo-options {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 760px) {
+  .demo-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+.demo-option {
+  display: flex;
+  flex-direction: column;
   background: var(--cc-surface);
-  border: 2px dashed var(--cc-border);
+  border: 1px solid var(--cc-border);
   border-radius: var(--cc-radius-lg);
-  padding: 56px 24px;
+  box-shadow: var(--cc-shadow);
+  padding: 24px;
+}
+
+.demo-option-skip {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.demo-option-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mosaic-forest);
+  margin: 0 0 4px;
+}
+
+.demo-option-subhead {
+  font-size: 12.5px;
+  color: var(--cc-text-secondary);
+  margin: 0 0 16px;
+}
+
+.demo-upload {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 2px dashed var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  padding: 32px 20px;
   text-align: center;
   color: var(--cc-text-secondary);
   font-size: 13.5px;
@@ -408,6 +472,51 @@ body {
 .demo-upload-icon {
   font-size: 28px;
   margin-bottom: 12px;
+}
+
+.demo-upload-hint {
+  margin: 8px 0 0;
+  font-weight: 600;
+  color: var(--mosaic-forest);
+}
+
+.demo-skip-button {
+  background: var(--mosaic-terracotta);
+  color: white;
+  border: none;
+  border-radius: var(--cc-radius-md);
+  padding: 14px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(196, 123, 64, 0.35);
+}
+
+.demo-skip-button:hover {
+  opacity: 0.92;
+}
+
+.demo-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--mosaic-cream);
+  border-left: 3px solid var(--mosaic-forest);
+  border-radius: var(--cc-radius-md);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.demo-info-icon {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.demo-info-box p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--mosaic-ink);
 }
 
 /* Demo pipeline: chat -> structured data -> app, shown as three stages
@@ -521,10 +630,15 @@ body {
 .demo-process-form input {
   padding: 10px 12px;
   border-radius: var(--cc-radius-sm);
-  border: 1px solid var(--cc-border);
+  border: 1px solid var(--mosaic-forest);
+  background: var(--mosaic-forest);
   font-size: 14px;
   font-family: inherit;
-  color: var(--cc-text);
+  color: #ffffff;
+}
+
+.demo-process-form input::placeholder {
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .demo-process-button {
