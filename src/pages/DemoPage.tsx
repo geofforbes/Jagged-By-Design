@@ -241,7 +241,10 @@ export default function DemoPage() {
   return (
     <main className="demo-page">
       <header className="demo-header">
-        <h1>Chat export ingestion demo</h1>
+        <div>
+          <p className="demo-eyebrow">Care Co.</p>
+          <h1>Chat export ingestion demo</h1>
+        </div>
         {phase !== "idle" && (
           <button className="demo-reset" onClick={handleReset}>
             Reset
@@ -251,6 +254,7 @@ export default function DemoPage() {
 
       {phase === "idle" && (
         <div className="demo-upload">
+          <div className="demo-upload-icon">💬</div>
           <p>
             Upload a WhatsApp chat export to see it become structured family knowledge. A plain .txt export works,
             or a .zip from "Export Chat → Attach Media" to include real photos and voice notes.

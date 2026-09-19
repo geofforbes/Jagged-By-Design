@@ -43,6 +43,31 @@
   box-sizing: border-box;
 }
 
+/* Scroll regions inside the phone mockups (and the plain "structured data"
+   stage) keep working exactly as before - only the OS scrollbar chrome is
+   hidden, which reads as a jarring stark bar against a phone-screen
+   aesthetic. Applies to every overflow:auto container in the demo, vertical
+   and horizontal alike (including the sideways scroll on Care's sub-tabs
+   and Life Story's filter chips). */
+.wa-messages,
+.results,
+.demo-stage-frame-plain,
+.co-subtabs,
+.co-body,
+.co-filter-row {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge/IE */
+}
+
+.wa-messages::-webkit-scrollbar,
+.results::-webkit-scrollbar,
+.demo-stage-frame-plain::-webkit-scrollbar,
+.co-subtabs::-webkit-scrollbar,
+.co-body::-webkit-scrollbar,
+.co-filter-row::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/newer Edge */
+}
+
 body {
   margin: 0;
   font-family:
@@ -321,20 +346,32 @@ body {
 /* Demo page shell */
 .demo-page {
   min-height: 100vh;
-  padding: 24px;
+  padding: 28px 24px;
   max-width: 1100px;
   margin: 0 auto;
+  background: var(--cc-outer-bg);
 }
 
 .demo-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.demo-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--cc-accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 4px;
 }
 
 .demo-header h1 {
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--cc-text);
   margin: 0;
 }
 
@@ -343,22 +380,31 @@ body {
   border: 1px solid var(--cc-border);
   border-radius: 999px;
   padding: 8px 16px;
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 600;
   cursor: pointer;
-  color: var(--cc-text);
+  color: var(--cc-text-secondary);
 }
 
 .demo-reset:hover {
   background: var(--cc-accent-light);
+  color: var(--cc-accent);
 }
 
 .demo-upload {
   background: var(--cc-surface);
   border: 2px dashed var(--cc-border);
   border-radius: var(--cc-radius-lg);
-  padding: 48px 24px;
+  padding: 56px 24px;
   text-align: center;
   color: var(--cc-text-secondary);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.demo-upload-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
 }
 
 /* Demo pipeline: chat -> structured data -> app, shown as three stages
@@ -384,10 +430,11 @@ body {
 }
 
 .demo-stage-label {
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--cc-text-secondary);
+  letter-spacing: 0.1em;
+  color: var(--cc-text-tertiary);
   margin: 0 4px 8px;
 }
 
@@ -399,6 +446,7 @@ body {
 
 .demo-stage-frame-plain {
   background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
   border-radius: var(--cc-radius-lg);
   box-shadow: var(--cc-shadow);
   padding: 16px;
@@ -427,7 +475,7 @@ body {
   height: 600px;
   margin-top: 27px;
   gap: 6px;
-  color: var(--cc-text-secondary);
+  color: var(--cc-text-tertiary);
 }
 
 .demo-arrow-glyph {
@@ -436,10 +484,11 @@ body {
 }
 
 .demo-arrow-label {
-  font-size: 10.5px;
+  font-size: 10px;
+  font-weight: 600;
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   max-width: 70px;
 }
 
@@ -457,6 +506,7 @@ body {
 
 .demo-process-form {
   background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
   border-radius: var(--cc-radius-lg);
   box-shadow: var(--cc-shadow);
   padding: 24px;
@@ -470,6 +520,8 @@ body {
   border-radius: var(--cc-radius-sm);
   border: 1px solid var(--cc-border);
   font-size: 14px;
+  font-family: inherit;
+  color: var(--cc-text);
 }
 
 .demo-process-button {
@@ -477,7 +529,7 @@ body {
   background: var(--cc-accent);
   color: white;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--cc-radius-md);
   padding: 12px;
   font-size: 14px;
   font-weight: 600;
@@ -495,7 +547,7 @@ body {
 }
 
 .demo-error {
-  color: var(--cc-tag-emergency-text);
+  color: var(--cc-tag-high-text);
   font-size: 13px;
   margin: 0;
 }
