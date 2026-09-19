@@ -551,6 +551,35 @@ body {
   margin: 0 4px 8px;
 }
 
+.demo-stage-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.demo-stage-label-row .demo-stage-label {
+  margin-bottom: 0;
+}
+
+.demo-prototype-link {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--cc-text-tertiary);
+  margin: 0 4px 8px;
+  white-space: nowrap;
+}
+
+.demo-prototype-link a {
+  color: var(--mosaic-forest);
+  text-decoration: none;
+}
+
+.demo-prototype-link a:hover {
+  text-decoration: underline;
+}
+
 .demo-stage-frame {
   height: 600px;
   display: flex;
