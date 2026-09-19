@@ -440,7 +440,16 @@ export default function DemoPage() {
           </div>
 
           <div className="demo-stage">
-            <h3 className="demo-stage-label">Mosaic app</h3>
+            <div className="demo-stage-label-row">
+              <h3 className="demo-stage-label">Mosaic app</h3>
+              <span className="demo-prototype-link">
+                [
+                <a href="https://claude.ai/artifact/Cz8BUVfJpiQVmXjr61GsNj" target="_blank" rel="noopener noreferrer">
+                  View Full Prototype
+                </a>
+                ]
+              </span>
+            </div>
             <div className="demo-stage-frame">
               {phase === "done" && results ? (
                 <AppPreview results={results} lovedOneName={lovedOneName.trim()} messages={messages} />
