@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { CalendarItem, CareItem, DemoResults, LifeStoryItem } from "./ResultsPreview";
 import type { ParsedWhatsAppMessage } from "../lib/parseWhatsAppExport";
+import { INITIAL_ACTIONS, KEY_CONTACTS, LOG_EVENTS, STARTER_TOPICS } from "../lib/nanasBunchDemo";
 
 type Tab = "care" | "plan" | "life";
 type CareSubTab = "insights" | "log" | "staging" | "prompts";
@@ -16,6 +17,14 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string }> = {
   Medium: { bg: "#FBF4EC", text: "#B8834A" },
   Low: { bg: "#E8EDF5", text: "#4A6FA5" },
   Positive: { bg: "#F0F5F0", text: "#6B9B6B" },
+};
+
+const LOG_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
+  Family: { bg: "#E8EDF5", text: "#4A6FA5" },
+  Cognitive: { bg: "#E8EDF5", text: "#4A6FA5" },
+  Health: { bg: "#FBF4EC", text: "#B8834A" },
+  Positive: { bg: "#F0F5F0", text: "#6B9B6B" },
+  Social: { bg: "#E8EDF5", text: "#4A6FA5" },
 };
 
 const ITEM_TYPE_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -102,17 +111,18 @@ export default function AppPreview({
   const [lifeFilter, setLifeFilter] = useState<LifeFilter>("all");
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("1m");
 
-  const conversationDays = useMemo(() => new Set(messages.map((m) => dateKey(m.timestamp.toISOString()))).size, [
-    messages,
-  ]);
-
   const lastUpdated = useMemo(() => {
     if (messages.length === 0) return null;
     return messages.reduce((latest, m) => (m.timestamp > latest ? m.timestamp : latest), messages[0].timestamp);
   }, [messages]);
 
-  const safetyCount = results.care.filter((c) => c.insight_category === "Safety").length;
   const positiveCount = results.care.filter((c) => c.severity === "Positive").length;
+  const familyVisitCount = results.calendar.filter((c) => c.item_type === "visit").length;
+  const [openPromptCategory, setOpenPromptCategory] = useState<string | null>(null);
+  const [openPrompt, setOpenPrompt] = useState<string | null>(null);
+  const [actionsDone, setActionsDone] = useState<Record<number, boolean>>(() =>
+    Object.fromEntries(INITIAL_ACTIONS.map((a) => [a.id, a.done])),
+  );
 
   const rangeDays = DATE_RANGE_PRESETS.find((p) => p.id === dateRangePreset)?.days ?? 30;
   const rangeCutoff = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
@@ -182,6 +192,12 @@ export default function AppPreview({
     return [...groups.entries()];
   }, [moments]);
 
+  const recapPhotos = useMemo(
+    () => results.lifeStory.map((m) => m.photo_url).filter((url): url is string => !!url).slice(0, 3),
+    [results.lifeStory],
+  );
+  const profilePhoto = recapPhotos[0] ?? null;
+
   return (
     <div className="co-phone">
       <div className="co-status-bar">
@@ -201,40 +217,54 @@ export default function AppPreview({
         {tab === "care" && (
           <>
             <div className="co-care-header">
-              <p className="co-eyebrow">Care Portal</p>
-              <h1 className="co-patient-name">{lovedOneName || "Loved one"}</h1>
-              {(safetyCount > 0 || results.care.length > 0) && (
+              <p className="co-eyebrow">Willow House</p>
+              <div className="co-care-header-row">
+                <div>
+                  <h1 className="co-patient-name">{lovedOneName || "Loved one"}</h1>
+                  <span className="co-care-meta-line">Dementia · Moderate</span>
+                </div>
+                <div className="co-care-clinician">
+                  <p className="co-care-clinician-name">GP &amp; nursing team</p>
+                  <p className="co-care-clinician-role">Care home</p>
+                  <p className="co-care-reviewed">Last reviewed: 15 Sep · Next: TBC</p>
+                </div>
+              </div>
+              {results.care.length > 0 && (
                 <div className="co-flag-pill">
                   <span className="co-flag-dot" />
-                  {results.care.length} insight{results.care.length === 1 ? "" : "s"} this conversation
+                  {results.care.length} flag{results.care.length === 1 ? "" : "s"}
                 </div>
               )}
             </div>
 
             <div className="co-stat-grid">
               <div className="co-stat">
-                <p className="co-stat-value" style={{ color: "#5B8A84" }}>
-                  {conversationDays}
+                <p className="co-stat-value" style={{ color: "#4A6FA5" }}>
+                  {familyVisitCount}
                 </p>
-                <p className="co-stat-label">Conversation days</p>
+                <p className="co-stat-label">Family visits</p>
+                <p className="co-stat-sublabel">this week</p>
               </div>
               <div className="co-stat">
                 <p className="co-stat-value" style={{ color: "#B8834A" }}>
                   {results.care.length}
                 </p>
                 <p className="co-stat-label">Clinical flags</p>
+                <p className="co-stat-sublabel">this week</p>
               </div>
               <div className="co-stat">
                 <p className="co-stat-value" style={{ color: "#6B9B6B" }}>
                   {positiveCount}
                 </p>
                 <p className="co-stat-label">Positive moments</p>
+                <p className="co-stat-sublabel">today</p>
               </div>
               <div className="co-stat">
-                <p className="co-stat-value" style={{ color: "#B85A5A" }}>
-                  {safetyCount}
+                <p className="co-stat-value" style={{ color: "#B8834A" }}>
+                  1
                 </p>
-                <p className="co-stat-label">Safety notes</p>
+                <p className="co-stat-label">Care follow-ups</p>
+                <p className="co-stat-sublabel">active</p>
               </div>
             </div>
 
@@ -245,9 +275,8 @@ export default function AppPreview({
                   <path d="M3.5 6.2l1.5 1.5 3.5-3" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <p>
-                  Updated via WhatsApp ·{" "}
+                  Via WhatsApp ·{" "}
                   <span style={{ color: "#6B6860", fontWeight: 500 }}>
-                    {lastUpdated.toLocaleDateString(undefined, { day: "numeric", month: "short" })},{" "}
                     {lastUpdated.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
                   </span>
                 </p>
@@ -316,7 +345,7 @@ export default function AppPreview({
                     <div className="co-methodology">
                       <p>
                         <strong>Source methodology · </strong>
-                        Observations are extracted from family conversations by Care Co. using AI. All entries are
+                        Observations are extracted from family conversations by Mosaic using AI. All entries are
                         flagged for clinician review — they are supporting information, not clinical assessments.
                       </p>
                     </div>
@@ -324,10 +353,29 @@ export default function AppPreview({
                 </>
               )}
               {careSubTab === "log" && (
-                <NotYetGenerated>
-                  A full conversation log view is a straightforward addition on top of the same extracted data - not
-                  built in this demo pass.
-                </NotYetGenerated>
+                <>
+                  <p className="co-section-label">Every family observation, most recent first</p>
+                  {LOG_EVENTS.filter((e) => new Date(e.occurred_at).getTime() >= rangeCutoff)
+                    .slice()
+                    .reverse()
+                    .map((e) => {
+                      const color = LOG_CATEGORY_COLORS[e.category] ?? LOG_CATEGORY_COLORS.Family;
+                      return (
+                        <div className="co-card co-log-row" key={e.id}>
+                          <span className="co-insight-dot" style={{ background: color.text }} />
+                          <div>
+                            <div className="co-insight-tags">
+                              <span className="co-insight-date">{e.date}</span>
+                              <span className="co-tag-badge" style={{ background: color.bg, color: color.text }}>
+                                {e.category}
+                              </span>
+                            </div>
+                            <p className="co-insight-title">{e.title}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </>
               )}
               {careSubTab === "staging" && (
                 <NotYetGenerated>
@@ -336,10 +384,55 @@ export default function AppPreview({
                 </NotYetGenerated>
               )}
               {careSubTab === "prompts" && (
-                <NotYetGenerated>
-                  Conversation prompts would be generated from {lovedOneName || "the loved one"}'s life story - not
-                  built in this demo pass.
-                </NotYetGenerated>
+                <>
+                  <p className="co-section-label">Conversation starters, grounded in real moments</p>
+                  <div className="co-filter-row">
+                    {STARTER_TOPICS.map((t) => (
+                      <button
+                        key={t.category}
+                        className={`co-filter-chip ${openPromptCategory === t.category ? "co-filter-chip-active" : ""}`}
+                        onClick={() => {
+                          setOpenPromptCategory(openPromptCategory === t.category ? null : t.category);
+                          setOpenPrompt(null);
+                        }}
+                      >
+                        <span>{t.emoji}</span> {t.category}
+                      </button>
+                    ))}
+                  </div>
+                  {STARTER_TOPICS.filter((t) => t.category === openPromptCategory).map((t) => (
+                    <div key={t.category} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {t.prompts.map((p) => {
+                        const isOpen = openPrompt === p.prompt;
+                        return (
+                          <div className="co-card" key={p.prompt}>
+                            <button className="co-insight-button" onClick={() => setOpenPrompt(isOpen ? null : p.prompt)}>
+                              <div className="co-insight-main">
+                                <p className="co-insight-title">{p.prompt}</p>
+                              </div>
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                aria-hidden="true"
+                                style={{ transform: isOpen ? "rotate(180deg)" : "none", flexShrink: 0, marginTop: 4 }}
+                              >
+                                <path d="M3 5l4 4 4-4" stroke="#A09D98" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            {isOpen && (
+                              <div className="co-insight-body">
+                                <p>{p.context}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  {!openPromptCategory && <p className="co-empty">Pick a topic to see suggested prompts.</p>}
+                </>
               )}
             </div>
           </>
@@ -419,16 +512,62 @@ export default function AppPreview({
                     <p className="co-section-label" style={{ padding: 0 }}>
                       Key contacts
                     </p>
-                    <NotYetGenerated>
-                      Clinician, carer, and emergency contacts are set up by the family - not derived from chat.
-                    </NotYetGenerated>
+                    <div className="co-card" style={{ padding: "4px 14px" }}>
+                      {KEY_CONTACTS.map((c) => {
+                        const style = avatarStyle(c.name);
+                        return (
+                          <div className="co-contact-row" key={c.name}>
+                            <div className="co-memory-avatar" style={{ background: style.bg, color: style.text }}>
+                              {c.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="co-contact-info">
+                              <p className="co-contact-name">{c.name}</p>
+                              <p className="co-contact-role">{c.role}</p>
+                            </div>
+                            <span className="co-contact-phone">{c.phone}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </>
               ) : (
-                <NotYetGenerated>
-                  Recommended actions would be generated from Care insights (e.g. a safety flag becoming a referral
-                  task) - not built in this demo pass.
-                </NotYetGenerated>
+                <>
+                  {(["Urgent", "This week", "Ongoing"] as const).map((priority) => {
+                    const items = INITIAL_ACTIONS.filter((a) => a.priority === priority);
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={priority}>
+                        <p className="co-section-label">{priority}</p>
+                        {items.map((a) => {
+                          const done = actionsDone[a.id];
+                          return (
+                            <div className="co-card co-action-row" key={a.id}>
+                              <button
+                                className="co-action-check"
+                                style={{ borderColor: done ? "#6B9B6B" : "#D0CDC8", background: done ? "#6B9B6B" : "transparent" }}
+                                onClick={() => setActionsDone((prev) => ({ ...prev, [a.id]: !prev[a.id] }))}
+                                aria-label={done ? "Mark not done" : "Mark done"}
+                              />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p
+                                  className="co-insight-title"
+                                  style={{ textDecoration: done ? "line-through" : "none", opacity: done ? 0.5 : 1 }}
+                                >
+                                  {a.title}
+                                </p>
+                                <p className="co-event-notes">{a.detail}</p>
+                                <p className="co-contact-role" style={{ marginTop: 4 }}>
+                                  {a.source}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </>
               )}
             </div>
           </>
@@ -439,23 +578,42 @@ export default function AppPreview({
             <div className="co-life-header">
               <p className="co-eyebrow">Life Story</p>
               <div className="co-life-header-row">
-                <h1 className="co-patient-name">{lovedOneName || "Loved one"}</h1>
-                <div
-                  className="co-life-avatar"
-                  style={{ background: avatarStyle(lovedOneName || "?").bg, color: avatarStyle(lovedOneName || "?").text }}
-                >
-                  {(lovedOneName || "?").charAt(0).toUpperCase()}
+                <div>
+                  <h1 className="co-patient-name">{lovedOneName || "Loved one"}</h1>
+                  <p className="co-life-subtitle">Everyone calls her Nana · Willow House</p>
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <span className="co-life-tag">Mother</span>
+                    <span className="co-life-tag">Grandmother</span>
+                  </div>
                 </div>
+                {profilePhoto ? (
+                  <img src={profilePhoto} alt="" className="co-life-avatar-photo" />
+                ) : (
+                  <div
+                    className="co-life-avatar"
+                    style={{ background: avatarStyle(lovedOneName || "?").bg, color: avatarStyle(lovedOneName || "?").text }}
+                  >
+                    {(lovedOneName || "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="co-body">
-              <div className="co-quote-card">
-                <p className="co-quote-text">It's about the destination, not the journey.</p>
-                <p className="co-quote-sub">
-                  This space celebrates who {lovedOneName || "they"} are — their life, their stories, and the moments
-                  that define them — not just the road they're on.
+              <div className="co-recap-card">
+                <p className="co-recap-label">Recent recap</p>
+                <p className="co-recap-title">August–September 2026</p>
+                <p className="co-recap-summary">
+                  {results.lifeStory.length} memories · {results.lifeStory.filter((m) => m.photo_url).length} photos ·{" "}
+                  {results.lifeStory.filter((m) => m.is_bite).length} audio
                 </p>
+                {recapPhotos.length > 0 && (
+                  <div className="co-recap-photos">
+                    {recapPhotos.map((src, i) => (
+                      <img src={src} alt="" key={i} />
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="co-filter-row">
