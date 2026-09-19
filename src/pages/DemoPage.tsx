@@ -5,7 +5,6 @@ import ResultsPreview, { type DemoResults } from "../components/ResultsPreview";
 import { parseWhatsAppExport, type ParsedWhatsAppMessage } from "../lib/parseWhatsAppExport";
 
 type Phase = "idle" | "parsed" | "processing" | "done" | "error";
-type ResultsView = "app" | "data";
 
 // Total upload size this live demo accepts - surfaced here so an oversized
 // file gets a clear heads-up before processing starts, not just a rejection
@@ -40,7 +39,6 @@ export default function DemoPage() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
-  const [resultsView, setResultsView] = useState<ResultsView>("app");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleFile(file: File) {
@@ -178,76 +176,90 @@ export default function DemoPage() {
       )}
 
       {phase !== "idle" && (
-        <div className="demo-columns">
-          <div className="demo-column">
-            <WhatsAppMockup groupName={groupName} messages={messages} />
+        <div className="demo-pipeline">
+          <div className="demo-stage">
+            <h3 className="demo-stage-label">WhatsApp export</h3>
+            <div className="demo-stage-frame">
+              <WhatsAppMockup groupName={groupName} messages={messages} />
+            </div>
           </div>
-          <div className="demo-column">
-            {phase === "parsed" && (
-              <div className="demo-process-form">
-                <p>{messages.length} messages parsed. Who is this conversation about?</p>
-                {messages.length > DEMO_MAX_MESSAGES && (
-                  <p className="demo-error">
-                    That's {messages.length} messages — this live demo handles up to {DEMO_MAX_MESSAGES} at once
-                    to stay fast and reliable. Export a shorter date range for the live demo.
-                  </p>
-                )}
-                <input
-                  type="text"
-                  placeholder="Loved one's name (e.g. Nana)"
-                  value={lovedOneName}
-                  onChange={(e) => setLovedOneName(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="Nicknames, comma separated (e.g. Mom, Nan)"
-                  value={aliases}
-                  onChange={(e) => setAliases(e.target.value)}
-                />
-                {error && <p className="demo-error">{error}</p>}
-                <button
-                  className="demo-process-button"
-                  onClick={handleProcess}
-                  disabled={messages.length > DEMO_MAX_MESSAGES}
-                >
-                  Process this conversation
-                </button>
-              </div>
-            )}
-            {phase === "processing" && (
-              <div className="demo-processing">
-                <div className="demo-spinner" />
-                <p>
-                  Reading the conversation and extracting structured knowledge…
-                  {batchProgress && (
-                    <>
-                      <br />
-                      Batch {Math.min(batchProgress.done + 1, batchProgress.total)} of {batchProgress.total}
-                    </>
+
+          <div className="demo-arrow" aria-hidden="true">
+            <span className="demo-arrow-glyph">→</span>
+            <span className="demo-arrow-label">Claude extracts</span>
+          </div>
+
+          <div className="demo-stage">
+            <h3 className="demo-stage-label">Structured data</h3>
+            <div className="demo-stage-frame demo-stage-frame-plain">
+              {phase === "parsed" && (
+                <div className="demo-process-form">
+                  <p>{messages.length} messages parsed. Who is this conversation about?</p>
+                  {messages.length > DEMO_MAX_MESSAGES && (
+                    <p className="demo-error">
+                      That's {messages.length} messages — this live demo handles up to {DEMO_MAX_MESSAGES} at once
+                      to stay fast and reliable. Export a shorter date range for the live demo.
+                    </p>
                   )}
-                </p>
-              </div>
-            )}
-            {phase === "done" && results && (
-              <>
-                {warning && <p className="demo-error">{warning}</p>}
-                <div className="demo-view-toggle">
+                  <input
+                    type="text"
+                    placeholder="Loved one's name (e.g. Nana)"
+                    value={lovedOneName}
+                    onChange={(e) => setLovedOneName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nicknames, comma separated (e.g. Mom, Nan)"
+                    value={aliases}
+                    onChange={(e) => setAliases(e.target.value)}
+                  />
+                  {error && <p className="demo-error">{error}</p>}
                   <button
-                    className={`demo-view-btn ${resultsView === "app" ? "demo-view-btn-active" : ""}`}
-                    onClick={() => setResultsView("app")}
+                    className="demo-process-button"
+                    onClick={handleProcess}
+                    disabled={messages.length > DEMO_MAX_MESSAGES}
                   >
-                    In the app
-                  </button>
-                  <button
-                    className={`demo-view-btn ${resultsView === "data" ? "demo-view-btn-active" : ""}`}
-                    onClick={() => setResultsView("data")}
-                  >
-                    Raw structured data
+                    Process this conversation
                   </button>
                 </div>
-                {resultsView === "app" ? <AppPreview results={results} /> : <ResultsPreview results={results} />}
-              </>
-            )}
+              )}
+              {phase === "processing" && (
+                <div className="demo-processing">
+                  <div className="demo-spinner" />
+                  <p>
+                    Reading the conversation and extracting structured knowledge…
+                    {batchProgress && (
+                      <>
+                        <br />
+                        Batch {Math.min(batchProgress.done + 1, batchProgress.total)} of {batchProgress.total}
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+              {phase === "done" && results && (
+                <>
+                  {warning && <p className="demo-error">{warning}</p>}
+                  <ResultsPreview results={results} />
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="demo-arrow" aria-hidden="true">
+            <span className="demo-arrow-glyph">→</span>
+            <span className="demo-arrow-label">Powers the app</span>
+          </div>
+
+          <div className="demo-stage">
+            <h3 className="demo-stage-label">Care Co. app</h3>
+            <div className="demo-stage-frame">
+              {phase === "done" && results ? (
+                <AppPreview results={results} />
+              ) : (
+                <div className="demo-stage-placeholder">App screens populate here once processing finishes.</div>
+              )}
+            </div>
           </div>
         </div>
       )}

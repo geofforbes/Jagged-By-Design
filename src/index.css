@@ -304,23 +304,98 @@ body {
   color: var(--cc-text-secondary);
 }
 
-.demo-columns {
+/* Demo pipeline: chat -> structured data -> app, shown as three stages
+   with arrow connectors so the flow itself is the visual, not just an
+   afterthought toggle between two views. */
+.demo-pipeline {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: 1fr 64px 1fr 64px 1fr;
+  gap: 12px;
   align-items: start;
 }
 
-@media (max-width: 800px) {
-  .demo-columns {
+@media (max-width: 1000px) {
+  .demo-pipeline {
     grid-template-columns: 1fr;
   }
 }
 
-.demo-column {
-  height: 640px;
+.demo-stage {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+.demo-stage-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cc-text-secondary);
+  margin: 0 4px 8px;
+}
+
+.demo-stage-frame {
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.demo-stage-frame-plain {
+  background: var(--cc-surface);
+  border-radius: var(--cc-radius-lg);
+  box-shadow: var(--cc-shadow);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.demo-stage-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--cc-text-secondary);
+  font-size: 13px;
+  background: var(--cc-surface);
+  border: 2px dashed var(--cc-border);
+  border-radius: var(--cc-radius-lg);
+  padding: 24px;
+}
+
+.demo-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 600px;
+  margin-top: 27px;
+  gap: 6px;
+  color: var(--cc-text-secondary);
+}
+
+.demo-arrow-glyph {
+  font-size: 22px;
+  color: var(--cc-accent);
+}
+
+.demo-arrow-label {
+  font-size: 10.5px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  max-width: 70px;
+}
+
+@media (max-width: 1000px) {
+  .demo-arrow {
+    height: auto;
+    margin: 4px 0;
+    flex-direction: row;
+  }
+
+  .demo-arrow-glyph {
+    transform: rotate(90deg);
+  }
 }
 
 .demo-process-form {
@@ -393,29 +468,6 @@ body {
   to {
     transform: rotate(360deg);
   }
-}
-
-.demo-view-toggle {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-  flex-shrink: 0;
-}
-
-.demo-view-btn {
-  border: 1px solid var(--cc-border);
-  background: var(--cc-surface);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 12px;
-  cursor: pointer;
-  color: var(--cc-text-secondary);
-}
-
-.demo-view-btn-active {
-  background: var(--cc-accent-light);
-  color: var(--cc-accent);
-  border-color: var(--cc-accent);
 }
 
 /* App preview - the actual Care / Plan / Life Story screens, populated
