@@ -3,9 +3,10 @@ import type { CalendarItem, CareItem, DemoResults, LifeStoryItem } from "./Resul
 import type { ParsedWhatsAppMessage } from "../lib/parseWhatsAppExport";
 
 type Tab = "care" | "plan" | "life";
-type CareSubTab = "insights" | "staging" | "starters";
+type CareSubTab = "insights" | "log" | "staging" | "prompts";
 type PlanView = "calendar" | "actions";
-type LifeFilter = "all" | "photo" | "video" | "audio" | "moment";
+type LifeFilter = "all" | "snaps" | "bites" | "moments";
+type DateRangePreset = "1w" | "1m" | "3m";
 
 // Colors read directly from the real Care Co. app bundle (see AppPreview's
 // PR description) - the app reuses the same severity color for both the
@@ -38,11 +39,15 @@ function avatarStyle(name: string): { bg: string; text: string } {
 }
 
 const FILTER_LABELS: { id: LifeFilter; label: string; emoji: string }[] = [
-  { id: "all", label: "All", emoji: "✦" },
-  { id: "photo", label: "Photos", emoji: "📷" },
-  { id: "video", label: "Videos", emoji: "🎬" },
-  { id: "audio", label: "Audio", emoji: "🎵" },
-  { id: "moment", label: "Moments", emoji: "💬" },
+  { id: "snaps", label: "Snaps", emoji: "📷" },
+  { id: "bites", label: "Bites", emoji: "🎧" },
+  { id: "moments", label: "Moments", emoji: "💬" },
+];
+
+const DATE_RANGE_PRESETS: { id: DateRangePreset; label: string; days: number }[] = [
+  { id: "1w", label: "1 Week", days: 7 },
+  { id: "1m", label: "1 Month", days: 30 },
+  { id: "3m", label: "3 Months", days: 90 },
 ];
 
 function formatCardDate(iso: string): string {
@@ -95,6 +100,7 @@ export default function AppPreview({
   const [openInsightId, setOpenInsightId] = useState<number | null>(results.care[0]?.id ?? null);
   const [planView, setPlanView] = useState<PlanView>("calendar");
   const [lifeFilter, setLifeFilter] = useState<LifeFilter>("all");
+  const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("1m");
 
   const conversationDays = useMemo(() => new Set(messages.map((m) => dateKey(m.timestamp.toISOString()))).size, [
     messages,
@@ -108,9 +114,15 @@ export default function AppPreview({
   const safetyCount = results.care.filter((c) => c.insight_category === "Safety").length;
   const positiveCount = results.care.filter((c) => c.severity === "Positive").length;
 
+  const rangeDays = DATE_RANGE_PRESETS.find((p) => p.id === dateRangePreset)?.days ?? 30;
+  const rangeCutoff = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+
   const sortedInsights = useMemo(
-    () => [...results.care].sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()),
-    [results.care],
+    () =>
+      [...results.care]
+        .filter((item) => new Date(item.occurred_at).getTime() >= rangeCutoff)
+        .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()),
+    [results.care, rangeCutoff],
   );
 
   const eventsByDay = useMemo(() => {
@@ -152,9 +164,9 @@ export default function AppPreview({
         .filter((item): item is LifeStoryItem & { occurred_at: string } => item.occurred_at !== null)
         .filter((item) => {
           if (lifeFilter === "all") return true;
-          if (lifeFilter === "photo") return !!item.photo_url;
-          if (lifeFilter === "moment") return !item.photo_url;
-          return false; // "video"/"audio" - not distinguished from a plain moment in this demo
+          if (lifeFilter === "snaps") return !!item.photo_url;
+          if (lifeFilter === "bites") return !!item.is_bite;
+          return !item.photo_url && !item.is_bite; // "moments"
         })
         .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()),
     [results.lifeStory, lifeFilter],
@@ -247,28 +259,50 @@ export default function AppPreview({
                 className={`co-subtab ${careSubTab === "insights" ? "co-subtab-active" : ""}`}
                 onClick={() => setCareSubTab("insights")}
               >
-                Insights Log
+                Insights
+              </button>
+              <button
+                className={`co-subtab ${careSubTab === "log" ? "co-subtab-active" : ""}`}
+                onClick={() => setCareSubTab("log")}
+              >
+                Log
               </button>
               <button
                 className={`co-subtab ${careSubTab === "staging" ? "co-subtab-active" : ""}`}
                 onClick={() => setCareSubTab("staging")}
               >
-                Staging &amp; Indicators
+                Staging
               </button>
               <button
-                className={`co-subtab ${careSubTab === "starters" ? "co-subtab-active" : ""}`}
-                onClick={() => setCareSubTab("starters")}
+                className={`co-subtab ${careSubTab === "prompts" ? "co-subtab-active" : ""}`}
+                onClick={() => setCareSubTab("prompts")}
               >
-                Conversation Starters
+                Prompts
               </button>
             </div>
 
             <div className="co-body">
               {careSubTab === "insights" && (
                 <>
+                  <div className="co-range-row">
+                    <p className="co-section-label" style={{ padding: 0, margin: 0 }}>
+                      Date range
+                    </p>
+                    <div className="co-range-pills">
+                      {DATE_RANGE_PRESETS.map((p) => (
+                        <button
+                          key={p.id}
+                          className={`co-range-pill ${dateRangePreset === p.id ? "co-range-pill-active" : ""}`}
+                          onClick={() => setDateRangePreset(p.id)}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <p className="co-section-label">AI-extracted observations from family conversations · Auto-logged</p>
                   {sortedInsights.length === 0 && (
-                    <p className="co-empty">Nothing flagged in this conversation yet.</p>
+                    <p className="co-empty">Nothing flagged in this date range.</p>
                   )}
                   {sortedInsights.map((item) => (
                     <InsightCard
@@ -289,15 +323,21 @@ export default function AppPreview({
                   )}
                 </>
               )}
+              {careSubTab === "log" && (
+                <NotYetGenerated>
+                  A full conversation log view is a straightforward addition on top of the same extracted data - not
+                  built in this demo pass.
+                </NotYetGenerated>
+              )}
               {careSubTab === "staging" && (
                 <NotYetGenerated>
                   Clinical staging (e.g. the Global Deterioration Scale) is entered by the care team, not extracted
                   from chat - not shown in this demo.
                 </NotYetGenerated>
               )}
-              {careSubTab === "starters" && (
+              {careSubTab === "prompts" && (
                 <NotYetGenerated>
-                  Conversation starters would be generated from {lovedOneName || "the loved one"}'s life story - not
+                  Conversation prompts would be generated from {lovedOneName || "the loved one"}'s life story - not
                   built in this demo pass.
                 </NotYetGenerated>
               )}
@@ -423,7 +463,7 @@ export default function AppPreview({
                   <button
                     key={f.id}
                     className={`co-filter-chip ${lifeFilter === f.id ? "co-filter-chip-active" : ""}`}
-                    onClick={() => setLifeFilter(f.id)}
+                    onClick={() => setLifeFilter(lifeFilter === f.id ? "all" : f.id)}
                   >
                     <span>{f.emoji}</span> {f.label}
                   </button>
@@ -450,7 +490,9 @@ export default function AppPreview({
                             </div>
                             <span className="co-memory-author">{item.person_name}</span>
                             <span className="co-memory-date">· {formatShort(item.occurred_at as string)}</span>
-                            <span className="co-memory-type">{item.photo_url ? "📷 Photo" : "💬 Moment"}</span>
+                            <span className="co-memory-type">
+                              {item.photo_url ? "📷 Snap" : item.is_bite ? "🎧 Bite" : "💬 Moment"}
+                            </span>
                           </div>
                           <p className="co-memory-caption">{item.summary}</p>
                         </div>

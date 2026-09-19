@@ -788,6 +788,38 @@ body {
   margin: 4px 0 0;
 }
 
+.co-range-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.co-range-pills {
+  display: flex;
+  gap: 4px;
+}
+
+.co-range-pill {
+  padding: 5px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cc-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.co-range-pill-active {
+  background: var(--cc-text);
+  border-color: var(--cc-text);
+  color: white;
+}
+
 .co-empty {
   text-align: center;
   color: var(--cc-text-tertiary);

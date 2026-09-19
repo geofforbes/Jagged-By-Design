@@ -17,6 +17,9 @@ export interface LifeStoryItem {
   // Set client-side after classification, from a browser-local object URL -
   // photos never leave the browser, so the server never sees or sets this.
   photo_url: string | null;
+  // True when this moment came from a voice note ("Bite") rather than text
+  // or a photo - only set by the hardcoded demo dataset for now.
+  is_bite?: boolean;
 }
 
 export interface CalendarItem {
