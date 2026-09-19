@@ -5,12 +5,18 @@ import { CLAUDE_MODEL } from "../../api/_lib/claude-model.js";
 
 const client = new Anthropic();
 
+// Mirrors the Insights Log data model in the real Care Co. app (Care Portal
+// screen): a clinical headline + detail body, tagged with a category and
+// severity, not a generic type/mood pair - see AppPreview.tsx.
 const CareItemSchema = z.object({
   category: z.literal("care"),
   sourceMessageIndex: z.number().describe("The #index of the message this came from"),
-  type: z.enum(["visit", "observation", "pharmacy", "appointment", "memory"]),
-  summary: z.string().describe("One short third-person sentence"),
-  mood: z.enum(["positive", "neutral", "negative"]).nullable(),
+  insightCategory: z.enum(["Safety", "Sleep / Circadian", "Cognitive", "Medication", "Social", "Positive"]),
+  severity: z.enum(["High", "Medium", "Low", "Positive"]),
+  title: z.string().describe("Short clinical-style headline, e.g. 'Unsupervised kitchen use'"),
+  body: z
+    .string()
+    .describe("1-2 sentence third-person detail a clinician would want, supporting information not a diagnosis"),
 });
 
 const LifeStoryItemSchema = z.object({
@@ -35,6 +41,10 @@ const CalendarItemSchema = z.object({
     .string()
     .nullable()
     .describe("ISO date YYYY-MM-DD if a specific date is stated or clearly inferable, else null"),
+  dueTime: z
+    .string()
+    .nullable()
+    .describe("24-hour HH:MM only if a specific time is explicitly stated in the conversation - never invent one"),
   notes: z.string().nullable(),
 });
 
@@ -80,10 +90,13 @@ A single message can produce multiple items across categories (e.g. "Taking Mum 
 Dr. Patel Tuesday, she's forgetting her pills" is both a "care" observation about
 forgetfulness AND a "calendar" appointment).
 
-1. "care" - dementia-relevant observations about ${lovedOneName}: mood, confusion,
-   memory, good/bad days, eating, sleeping, medication/pharmacy events, appointments
-   that already happened, visits to her. Never infer a medical diagnosis or
-   conclusion the message doesn't state.
+1. "care" - a clinically-relevant observation about ${lovedOneName}, written like a
+   note a family carer would flag for her clinician: confusion, memory lapses,
+   safety incidents, sleep disruption, medication issues, social/emotional
+   presentation, or a clearly positive moment worth noting. Never infer a medical
+   diagnosis or conclusion the message doesn't state - report only what was
+   observed. Write "title" as a short clinical-style headline (like a chart note),
+   and "body" as 1-2 sentences of supporting detail, third person.
 2. "life_story" - day-to-day moments involving ${lovedOneName} worth remembering
    (not clinical), and memories or life history about her surfaced in conversation
    (her childhood, past places, relationships). Set isHistorical true only for the
@@ -97,11 +110,14 @@ with no other detail), and skip anything not actually about ${lovedOneName} per 
 Every item must include sourceMessageIndex, the #N tag of the message it came from.
 Never invent details the conversation doesn't support.
 
-"type" (care items only) must be exactly one of: visit, observation, pharmacy,
-appointment, memory - use "pharmacy" for medication events, never "medication" or
-any other word. "mood" (care items only) must be exactly one of: positive, neutral,
-negative - never a more specific word like "declining" or "confused", pick the
-closest of those three.`;
+"insightCategory" (care items only) must be exactly one of: Safety, Sleep / Circadian,
+Cognitive, Medication, Social, Positive - never invent another label. Use "Medication"
+for medication/pharmacy events, "Positive" for a clearly good moment. "severity" (care
+items only) must be exactly one of: High, Medium, Low, Positive - "Positive" is both
+the category and severity for a good-news item; otherwise judge severity by how
+concerning the observation is, never invent another word. "dueTime" (calendar items
+only) must be a literal 24-hour HH:MM string or null - only when the conversation
+states a specific time, never estimated or invented.`;
 }
 
 /**
