@@ -88,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: item.body,
         occurred_at: sourceMessage.timestamp.toISOString(),
         person_name: personName,
+        source_message_index: item.sourceMessageIndex,
       });
     } else if (item.category === "life_story") {
       lifeStory.push({
@@ -96,6 +97,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         era_label: item.eraLabel,
         summary: item.summary,
         person_name: personName,
+        // Echoed back so the client can re-attach a photo's object URL - the
+        // photo itself is never uploaded here, only its text caption is (see
+        // messageTextForClassifier in DemoPage.tsx).
+        source_message_index: item.sourceMessageIndex,
       });
     } else {
       calendar.push({
@@ -106,6 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         due_time: item.dueTime,
         notes: item.notes,
         person_name: personName,
+        source_message_index: item.sourceMessageIndex,
       });
     }
   }

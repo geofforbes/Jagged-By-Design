@@ -1,4 +1,5 @@
-import type { ParsedWhatsAppMessage } from "../lib/parseWhatsAppExport";
+import type { EnrichedMessage } from "../lib/mediaKind";
+import { captionOnly, pseudoDuration } from "../lib/mediaKind";
 
 const SENDER_COLORS = ["#c2185b", "#2e7d32", "#1565c0", "#6a1b9a", "#ef6c00", "#00838f", "#5d4037"];
 
@@ -20,7 +21,7 @@ function formatDayLabel(date: Date): string {
 
 interface WhatsAppMockupProps {
   groupName: string;
-  messages: ParsedWhatsAppMessage[];
+  messages: EnrichedMessage[];
 }
 
 export default function WhatsAppMockup({ groupName, messages }: WhatsAppMockupProps) {
@@ -40,6 +41,7 @@ export default function WhatsAppMockup({ groupName, messages }: WhatsAppMockupPr
           const dayLabel = formatDayLabel(message.timestamp);
           const showDaySeparator = dayLabel !== lastDayLabel;
           lastDayLabel = dayLabel;
+          const caption = captionOnly(message);
 
           return (
             <div key={i}>
@@ -48,7 +50,30 @@ export default function WhatsAppMockup({ groupName, messages }: WhatsAppMockupPr
                 <div className="wa-bubble-sender" style={{ color: colorForSender(message.sender) }}>
                   {message.sender}
                 </div>
-                <div className="wa-bubble-text">{message.text}</div>
+
+                {message.mediaKind === "image" &&
+                  (message.photoUrl ? (
+                    <img src={message.photoUrl} alt="" className="wa-bubble-photo" />
+                  ) : (
+                    <div className="wa-bubble-photo-placeholder">📷 Photo</div>
+                  ))}
+
+                {message.mediaKind === "audio" && (
+                  <div className="wa-bubble-voice">
+                    <span className="wa-bubble-voice-icon">🎤</span>
+                    <span className="wa-bubble-voice-wave">
+                      {Array.from({ length: 10 }, (_, j) => (
+                        <span key={j} style={{ height: `${4 + ((i + j) % 5) * 3}px` }} />
+                      ))}
+                    </span>
+                    <span className="wa-bubble-voice-duration">{pseudoDuration(message.attachmentFilename ?? String(i))}</span>
+                  </div>
+                )}
+
+                {message.mediaKind === "video" &&
+                  (message.attachmentFilename ? <div className="wa-bubble-photo-placeholder">🎬 Video</div> : null)}
+
+                {caption && <div className="wa-bubble-text">{caption}</div>}
                 <div className="wa-bubble-time">{formatTime(message.timestamp)}</div>
               </div>
             </div>

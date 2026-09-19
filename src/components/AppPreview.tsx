@@ -150,7 +150,12 @@ export default function AppPreview({
     () =>
       results.lifeStory
         .filter((item): item is LifeStoryItem & { occurred_at: string } => item.occurred_at !== null)
-        .filter(() => lifeFilter === "all" || lifeFilter === "moment")
+        .filter((item) => {
+          if (lifeFilter === "all") return true;
+          if (lifeFilter === "photo") return !!item.photo_url;
+          if (lifeFilter === "moment") return !item.photo_url;
+          return false; // "video"/"audio" - not distinguished from a plain moment in this demo
+        })
         .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()),
     [results.lifeStory, lifeFilter],
   );
@@ -437,15 +442,18 @@ export default function AppPreview({
                     const style = avatarStyle(item.person_name);
                     return (
                       <div className="co-memory-card" key={item.id}>
-                        <div className="co-memory-meta">
-                          <div className="co-memory-avatar" style={{ background: style.bg, color: style.text }}>
-                            {item.person_name.charAt(0).toUpperCase()}
+                        {item.photo_url && <img src={item.photo_url} alt="" className="co-memory-photo" />}
+                        <div className="co-memory-body">
+                          <div className="co-memory-meta">
+                            <div className="co-memory-avatar" style={{ background: style.bg, color: style.text }}>
+                              {item.person_name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="co-memory-author">{item.person_name}</span>
+                            <span className="co-memory-date">· {formatShort(item.occurred_at as string)}</span>
+                            <span className="co-memory-type">{item.photo_url ? "📷 Photo" : "💬 Moment"}</span>
                           </div>
-                          <span className="co-memory-author">{item.person_name}</span>
-                          <span className="co-memory-date">· {formatShort(item.occurred_at as string)}</span>
-                          <span className="co-memory-type">💬 Moment</span>
+                          <p className="co-memory-caption">{item.summary}</p>
                         </div>
-                        <p className="co-memory-caption">{item.summary}</p>
                       </div>
                     );
                   })}

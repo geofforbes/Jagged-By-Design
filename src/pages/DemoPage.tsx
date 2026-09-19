@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
+import JSZip from "jszip";
 import WhatsAppMockup from "../components/WhatsAppMockup";
 import AppPreview from "../components/AppPreview";
-import ResultsPreview, { type DemoResults } from "../components/ResultsPreview";
-import { parseWhatsAppExport, type ParsedWhatsAppMessage } from "../lib/parseWhatsAppExport";
+import ResultsPreview, { type CareItem, type CalendarItem, type DemoResults, type LifeStoryItem } from "../components/ResultsPreview";
+import { parseWhatsAppExport } from "../lib/parseWhatsAppExport";
+import { captionOnly, detectMediaKind, type EnrichedMessage } from "../lib/mediaKind";
 
 type Phase = "idle" | "parsed" | "processing" | "done" | "error";
 
@@ -31,9 +33,21 @@ const BATCH_SIZE = 25;
 // round, which is why it was still taking ~2 minutes after the first fix.
 const CONCURRENCY = 6;
 
+// Finds a zip entry for an attachment filename - exact path first, then by
+// basename, since some WhatsApp export zips nest media in a subfolder while
+// the .txt still references the bare filename.
+function findZipEntry(zip: JSZip, filename: string): JSZip.JSZipObject | null {
+  const exact = zip.file(filename);
+  if (exact) return exact;
+  const basename = filename.split("/").pop() ?? filename;
+  const escaped = basename.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = zip.file(new RegExp(`(^|/)${escaped}$`));
+  return matches[0] ?? null;
+}
+
 export default function DemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [messages, setMessages] = useState<ParsedWhatsAppMessage[]>([]);
+  const [messages, setMessages] = useState<EnrichedMessage[]>([]);
   const [groupName, setGroupName] = useState("Family chat");
   const [lovedOneName, setLovedOneName] = useState("");
   const [aliases, setAliases] = useState("");
@@ -43,20 +57,81 @@ export default function DemoPage() {
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // WhatsApp's "Export Chat" -> "Attach Media" produces a .zip with the
+  // chat .txt plus the actual photos/voice notes. Images are matched to
+  // their message here and turned into an object URL purely for display -
+  // never uploaded anywhere, since the classifier never needs to see them
+  // (see messageTextForClassifier below).
+  async function loadZip(file: File): Promise<EnrichedMessage[]> {
+    const zip = await JSZip.loadAsync(file);
+    const txtEntry = Object.values(zip.files).find((f) => !f.dir && /\.txt$/i.test(f.name));
+    if (!txtEntry) {
+      throw new Error('No .txt chat file found in that zip - make sure it\'s a WhatsApp "Export Chat" zip.');
+    }
+    const text = await txtEntry.async("string");
+    const parsed = parseWhatsAppExport(text);
+
+    const enriched: EnrichedMessage[] = [];
+    for (const message of parsed) {
+      const mediaKind = detectMediaKind(message);
+      let photoUrl: string | null = null;
+      if (mediaKind === "image" && message.attachmentFilename) {
+        const entry = findZipEntry(zip, message.attachmentFilename);
+        if (entry) {
+          const blob = await entry.async("blob");
+          photoUrl = URL.createObjectURL(blob);
+        }
+      }
+      enriched.push({ ...message, mediaKind, photoUrl });
+    }
+    return enriched;
+  }
+
   function handleFile(file: File) {
+    const finish = (enriched: EnrichedMessage[], name: string) => {
+      setMessages(enriched);
+      setGroupName(name.replace(/^whatsapp chat with /i, ""));
+      setPhase("parsed");
+      setError(null);
+    };
+
+    if (/\.zip$/i.test(file.name)) {
+      loadZip(file)
+        .then((enriched) => finish(enriched, file.name.replace(/\.zip$/i, "")))
+        .catch((err) => setError(err instanceof Error ? err.message : "Couldn't read that zip file."));
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result ?? "");
       const parsed = parseWhatsAppExport(text);
-      setMessages(parsed);
-      setGroupName(file.name.replace(/\.txt$/i, "").replace(/^whatsapp chat with /i, ""));
-      setPhase("parsed");
-      setError(null);
+      const enriched: EnrichedMessage[] = parsed.map((m) => ({ ...m, mediaKind: detectMediaKind(m), photoUrl: null }));
+      finish(enriched, file.name.replace(/\.txt$/i, ""));
     };
     reader.readAsText(file);
   }
 
-  async function classifyBatch(batch: ParsedWhatsAppMessage[]): Promise<DemoResults> {
+  // What actually gets sent to the classifier for a media message: never the
+  // file itself (no vision/transcription happens here - see AppPreview's
+  // "not built in this demo pass" placeholders for where real analysis would
+  // slot in), just a bracketed hint matching what classifyChunk's system
+  // prompt expects, plus any real caption text already in the export.
+  function messageTextForClassifier(m: EnrichedMessage): string {
+    const caption = captionOnly(m);
+    if (m.mediaKind === "image") return caption ? `[Photo: ${caption}]` : "[Photo attached, no caption]";
+    if (m.mediaKind === "video") return caption ? `[Video: ${caption}]` : "[Video attached, no caption]";
+    if (m.mediaKind === "audio") {
+      return caption ? `[Voice note attached - not transcribed. Caption: ${caption}]` : "[Voice note attached - not transcribed]";
+    }
+    return m.text;
+  }
+
+  async function classifyBatch(batch: EnrichedMessage[]): Promise<{
+    care: (CareItem & { source_message_index: number })[];
+    lifeStory: (LifeStoryItem & { source_message_index: number })[];
+    calendar: (CalendarItem & { source_message_index: number })[];
+  }> {
     const response = await fetch("/api/demo-classify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,7 +139,7 @@ export default function DemoPage() {
         messages: batch.map((m) => ({
           timestamp: m.timestamp.toISOString(),
           sender: m.sender,
-          text: m.text,
+          text: messageTextForClassifier(m),
         })),
         lovedOneName: lovedOneName.trim(),
         aliases: aliases
@@ -77,7 +152,7 @@ export default function DemoPage() {
       const body = await response.json().catch(() => ({}));
       throw new Error(body.error || `Request failed (${response.status})`);
     }
-    return (await response.json()) as DemoResults;
+    return await response.json();
   }
 
   async function handleProcess() {
@@ -89,7 +164,7 @@ export default function DemoPage() {
     setError(null);
     setWarning(null);
 
-    const batches: ParsedWhatsAppMessage[][] = [];
+    const batches: EnrichedMessage[][] = [];
     for (let i = 0; i < messages.length; i += BATCH_SIZE) {
       batches.push(messages.slice(i, i + BATCH_SIZE));
     }
@@ -114,9 +189,18 @@ export default function DemoPage() {
         const batch = batches[nextBatchIndex++];
         try {
           const batchResult = await classifyBatch(batch);
-          for (const item of batchResult.care) merged.care.push({ ...item, id: nextId++ });
-          for (const item of batchResult.lifeStory) merged.lifeStory.push({ ...item, id: nextId++ });
-          for (const item of batchResult.calendar) merged.calendar.push({ ...item, id: nextId++ });
+          for (const { source_message_index: _unused, ...item } of batchResult.care) {
+            merged.care.push({ ...item, id: nextId++ });
+          }
+          for (const { source_message_index, ...item } of batchResult.lifeStory) {
+            // The photo itself never went to the server (see
+            // messageTextForClassifier) - re-attach it here from the same
+            // batch's local object URL, purely client-side.
+            merged.lifeStory.push({ ...item, id: nextId++, photo_url: batch[source_message_index]?.photoUrl ?? null });
+          }
+          for (const { source_message_index: _unused2, ...item } of batchResult.calendar) {
+            merged.calendar.push({ ...item, id: nextId++ });
+          }
         } catch (err) {
           failedBatches += 1;
           console.error("Batch failed, skipping", err);
@@ -141,6 +225,9 @@ export default function DemoPage() {
   }
 
   function handleReset() {
+    for (const m of messages) {
+      if (m.photoUrl) URL.revokeObjectURL(m.photoUrl);
+    }
     setPhase("idle");
     setMessages([]);
     setResults(null);
@@ -164,11 +251,14 @@ export default function DemoPage() {
 
       {phase === "idle" && (
         <div className="demo-upload">
-          <p>Upload a WhatsApp chat export (.txt) to see it become structured family knowledge.</p>
+          <p>
+            Upload a WhatsApp chat export to see it become structured family knowledge. A plain .txt export works,
+            or a .zip from "Export Chat → Attach Media" to include real photos and voice notes.
+          </p>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt"
+            accept=".txt,.zip"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFile(file);
