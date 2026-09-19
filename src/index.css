@@ -154,6 +154,59 @@ body {
   margin-top: 2px;
 }
 
+.wa-bubble-photo {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  object-fit: cover;
+}
+
+.wa-bubble-photo-placeholder {
+  width: 160px;
+  height: 100px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--wa-text-secondary);
+  margin-bottom: 4px;
+}
+
+.wa-bubble-voice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  margin-bottom: 2px;
+}
+
+.wa-bubble-voice-icon {
+  font-size: 15px;
+}
+
+.wa-bubble-voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.wa-bubble-voice-wave span {
+  width: 2.5px;
+  border-radius: 2px;
+  background: var(--wa-accent);
+  opacity: 0.6;
+}
+
+.wa-bubble-voice-duration {
+  font-size: 11px;
+  color: var(--wa-text-secondary);
+}
+
 .wa-empty {
   text-align: center;
   color: var(--wa-text-secondary);
@@ -1017,6 +1070,17 @@ body {
   background: var(--cc-surface);
   border: 1px solid var(--cc-border);
   border-radius: 16px;
+  overflow: hidden;
+}
+
+.co-memory-photo {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.co-memory-body {
   padding: 12px 14px 14px;
 }
 

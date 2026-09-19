@@ -73,9 +73,17 @@ function systemPrompt(lovedOneName: string, aliases: string[]): string {
   const names = [lovedOneName, ...aliases].filter(Boolean).join(", ");
   return `You extract structured information from a family WhatsApp conversation about
 ${lovedOneName}, a loved one living with dementia. Also known as: ${names || lovedOneName}.
-Family members share messages, photos, and voice notes; photos and voice notes have
-already been converted to bracketed text descriptions inline, e.g. "[Photo: ...]" or
-"[Voice note transcript: ...]".
+Family members share messages, photos, and voice notes. Attachments appear inline as
+bracketed tags, not real analysis of the file:
+- "[Photo: <caption>]" or "[Photo attached, no caption]" - you have not seen the
+  photo. If a caption is present, use only that; if not, you may note a photo was
+  shared but never invent what it shows.
+- "[Video: <caption>]" or "[Video attached, no caption]" - same rule as photos.
+- "[Voice note attached - not transcribed]", sometimes with a caption - you do not
+  know what was said. Never invent voice note content. Only extract anything from a
+  voice note when OTHER messages nearby in the conversation react to, describe, or
+  quote what was said in text - then attribute the resulting item to whatever those
+  reactions actually say, not to the voice note itself.
 
 This is a large family group chat, not a dedicated care channel - most messages are
 ordinary family chatter (other people's birthdays, unrelated logistics, jokes) that

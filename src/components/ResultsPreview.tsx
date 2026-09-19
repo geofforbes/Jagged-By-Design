@@ -14,6 +14,9 @@ export interface LifeStoryItem {
   era_label: string | null;
   summary: string;
   person_name: string;
+  // Set client-side after classification, from a browser-local object URL -
+  // photos never leave the browser, so the server never sees or sets this.
+  photo_url: string | null;
 }
 
 export interface CalendarItem {
