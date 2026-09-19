@@ -22,18 +22,22 @@ function formatDayLabel(date: Date): string {
 interface WhatsAppMockupProps {
   groupName: string;
   messages: EnrichedMessage[];
+  avatarUrl?: string | null;
 }
 
-export default function WhatsAppMockup({ groupName, messages }: WhatsAppMockupProps) {
+export default function WhatsAppMockup({ groupName, messages, avatarUrl }: WhatsAppMockupProps) {
   let lastDayLabel = "";
 
   return (
     <div className="wa-phone">
       <div className="wa-header">
-        <div className="wa-header-avatar">{groupName.charAt(0).toUpperCase()}</div>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="wa-header-avatar-photo" />
+        ) : (
+          <div className="wa-header-avatar">{groupName.charAt(0).toUpperCase()}</div>
+        )}
         <div>
           <div className="wa-header-title">{groupName}</div>
-          <div className="wa-header-subtitle">{messages.length} messages</div>
         </div>
       </div>
       <div className="wa-messages">

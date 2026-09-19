@@ -50,6 +50,7 @@ export default function DemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [messages, setMessages] = useState<EnrichedMessage[]>([]);
   const [groupName, setGroupName] = useState("Family chat");
+  const [groupAvatarUrl, setGroupAvatarUrl] = useState<string | null>(null);
   const [lovedOneName, setLovedOneName] = useState("");
   const [aliases, setAliases] = useState("");
   const [results, setResults] = useState<DemoResults | null>(null);
@@ -91,7 +92,14 @@ export default function DemoPage() {
   function handleFile(file: File) {
     const finish = (enriched: EnrichedMessage[], name: string) => {
       setMessages(enriched);
-      setGroupName(name.replace(/^whatsapp chat with /i, ""));
+      const senderSet = new Set(enriched.map((m) => m.sender));
+      if (NANAS_BUNCH_MARKER_SENDERS.every((n) => senderSet.has(n))) {
+        setGroupName("Nana's Bunch \u{1F34C}");
+        setGroupAvatarUrl(enriched.find((m) => m.attachmentFilename === "IMG-2026-0829.jpg")?.photoUrl ?? null);
+      } else {
+        setGroupName(name.replace(/^whatsapp chat with /i, ""));
+        setGroupAvatarUrl(null);
+      }
       setPhase("parsed");
       setError(null);
     };
@@ -251,6 +259,7 @@ export default function DemoPage() {
     }
     setPhase("idle");
     setMessages([]);
+    setGroupAvatarUrl(null);
     setResults(null);
     setError(null);
     setWarning(null);
@@ -263,7 +272,7 @@ export default function DemoPage() {
     <main className="demo-page">
       <header className="demo-header">
         <div>
-          <p className="demo-eyebrow">Care Co.</p>
+          <p className="demo-eyebrow">Mosaic</p>
           <h1>Chat export ingestion demo</h1>
         </div>
         {phase !== "idle" && (
@@ -297,7 +306,7 @@ export default function DemoPage() {
           <div className="demo-stage">
             <h3 className="demo-stage-label">WhatsApp export</h3>
             <div className="demo-stage-frame">
-              <WhatsAppMockup groupName={groupName} messages={messages} />
+              <WhatsAppMockup groupName={groupName} messages={messages} avatarUrl={groupAvatarUrl} />
             </div>
           </div>
 
@@ -369,7 +378,7 @@ export default function DemoPage() {
           </div>
 
           <div className="demo-stage">
-            <h3 className="demo-stage-label">Care Co. app</h3>
+            <h3 className="demo-stage-label">Mosaic app</h3>
             <div className="demo-stage-frame">
               {phase === "done" && results ? (
                 <AppPreview results={results} lovedOneName={lovedOneName.trim()} messages={messages} />
