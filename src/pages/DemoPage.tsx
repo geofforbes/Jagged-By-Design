@@ -25,9 +25,11 @@ const BATCH_SIZE = 25;
 // invocation, not multiple Anthropic calls sharing one function's wall
 // clock (that's the earlier day-chunking case, where concurrency genuinely
 // didn't help). Awaiting them sequentially was the main reason a 6-batch
-// upload took 3+ minutes. Kept modest to stay well clear of Anthropic's
-// per-minute rate limits on a low-usage-tier account.
-const CONCURRENCY = 4;
+// upload took 3+ minutes. DEMO_MAX_MESSAGES / BATCH_SIZE is 6, so this
+// covers the largest file the demo accepts in a single wave rather than
+// two - concurrency=4 still left a 6-batch upload waiting on a second
+// round, which is why it was still taking ~2 minutes after the first fix.
+const CONCURRENCY = 6;
 
 export default function DemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
