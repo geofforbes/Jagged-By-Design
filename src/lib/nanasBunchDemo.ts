@@ -1,4 +1,7 @@
 import type { DemoResults } from "../components/ResultsPreview";
+import courtyardPhoto from "../assets/nanas-bunch/IMG-2026-0829.jpg";
+import pastiesPhoto from "../assets/nanas-bunch/IMG-2026-0829-B.jpg";
+import shoesPhoto from "../assets/nanas-bunch/IMG-2026-0914.jpg";
 
 /**
  * Curated, hand-built structured output for the exact "Nana's Bunch" chat
@@ -24,14 +27,24 @@ export const NANAS_BUNCH_PHOTO_ATTACHMENTS: Record<number, string> = {
   13: "IMG-2026-0914.jpg",
 };
 
-// The real chat export's raw text. The actual photos and voice notes are
-// never bundled into the app itself (see the "never commit these" rule in
-// .gitignore - this is real, identifiable family/health data), so the
-// WhatsApp mockup shows this thread with its normal media placeholders
-// (waveform for audio, camera icon for photos) rather than the real files.
+// Real photos from the real export, bundled as ordinary app assets (with
+// explicit sign-off from the family member who supplied them for this
+// submission) so "Skip to Furnished Demo" can show the same WhatsApp
+// thread without requiring a live upload. Filenames match the ones
+// referenced in the real chat text below, so they resolve through the
+// same attachmentFilename-keyed lookup a live zip upload uses.
+export const NANAS_BUNCH_SAMPLE_PHOTOS: Record<string, string> = {
+  "IMG-2026-0829.jpg": courtyardPhoto,
+  "IMG-2026-0829-B.jpg": pastiesPhoto,
+  "IMG-2026-0914.jpg": shoesPhoto,
+};
+
+// The real chat export's raw text (minus the two voice-note audio files,
+// which the WhatsApp mockup renders as a waveform placeholder without
+// needing the actual audio bytes - see mediaKind.ts's pseudoDuration).
 // Parsed with the exact same parseWhatsAppExport() a live .txt/.zip upload
-// goes through, so "Skip to Furnished Demo" produces the same real
-// conversation, just without a live upload's real photo blobs.
+// goes through, so "Skip to Furnished Demo" produces an identical WhatsApp
+// thread to actually uploading this file.
 export const NANAS_BUNCH_CHAT_EXPORT = `29/08/26, 10:41 - Helen Lowe: <attached: IMG-2026-0829.jpg> Mom after breakfast in the courtyard. The care review says she is eating well and still likes walking to the dining room when she feels up to it.
 29/08/26, 10:46 - Mark Bennett: Can they keep offering the walk and let her decide? She hates being rushed.
 29/08/26, 10:50 - Helen Lowe: Yes, that's what we agreed.

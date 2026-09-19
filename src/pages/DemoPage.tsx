@@ -9,6 +9,7 @@ import {
   NANAS_BUNCH_CHAT_EXPORT,
   NANAS_BUNCH_MARKER_SENDERS,
   NANAS_BUNCH_PHOTO_ATTACHMENTS,
+  NANAS_BUNCH_SAMPLE_PHOTOS,
   buildNanasBunchResults,
 } from "../lib/nanasBunchDemo";
 
@@ -282,20 +283,23 @@ export default function DemoPage() {
   }
 
   // Jumps straight to the furnished end state using the real Nana's Bunch
-  // chat text (bundled as a source constant, same content as the sample
-  // .zip supplied with the submission) run through the exact same parser a
-  // live upload goes through - so the WhatsApp mockup, structured data, and
-  // app screens all show the same real conversation, only without making
-  // the visitor click through the ingestion steps. The real photos aren't
-  // bundled into the app (see nanasBunchDemo.ts), so photo messages here
-  // show the normal camera-icon placeholder instead of the real image.
+  // chat text and photos (bundled as source assets, same content as the
+  // sample .zip supplied with the submission) run through the exact same
+  // parser and photo-matching a live upload goes through - so the WhatsApp
+  // mockup, structured data, and app screens are all just as real, only
+  // without making the visitor click through the ingestion steps.
   function handleSkipToFurnished() {
     setError(null);
     const parsed = parseWhatsAppExport(NANAS_BUNCH_CHAT_EXPORT);
-    const enriched: EnrichedMessage[] = parsed.map((m) => ({ ...m, mediaKind: detectMediaKind(m), photoUrl: null }));
+    const enriched: EnrichedMessage[] = parsed.map((m) => {
+      const mediaKind = detectMediaKind(m);
+      const photoUrl =
+        mediaKind === "image" && m.attachmentFilename ? NANAS_BUNCH_SAMPLE_PHOTOS[m.attachmentFilename] ?? null : null;
+      return { ...m, mediaKind, photoUrl };
+    });
     setMessages(enriched);
     setGroupName("Nana's Bunch \u{1F34C}");
-    setGroupAvatarUrl(null);
+    setGroupAvatarUrl(enriched.find((m) => m.attachmentFilename === "IMG-2026-0829.jpg")?.photoUrl ?? null);
     setLovedOneName("Sally");
     setResults(buildHardcodedResultsFromMessages(enriched));
     setPhase("done");
