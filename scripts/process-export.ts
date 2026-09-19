@@ -232,30 +232,46 @@ async function main() {
 
       if (item.category === "care") {
         const base = {
-          type: item.type as EventType,
+          insight_category: item.insightCategory,
+          severity: item.severity,
+          title: item.title,
+          body: item.body,
           occurred_at: sourceMessage.timestamp.toISOString(),
-          summary: item.summary,
-          mood: item.mood as Mood | null,
           person_id: personId,
           person_name: personName,
           source: "export" as const,
           source_message_id: sourceMessage.dbMessageId,
         };
-        const saved = skipDb
-          ? { id: nextCareId++, ...base }
-          : {
-              ...(await insertEvent({
-                type: base.type,
-                occurredAt: sourceMessage.timestamp,
-                summary: base.summary,
-                mood: base.mood,
-                personId,
-                source: "export",
-                sourceMessageId: sourceMessage.dbMessageId,
-              })),
-              person_name: personName,
-            };
-        careTimeline.push(saved);
+        let id: number;
+        if (skipDb) {
+          id = nextCareId++;
+        } else {
+          // The events table still reflects the pre-redesign type/mood
+          // taxonomy (see db/schema.sql) - this is a lossy compatibility
+          // mapping for the DB write only. output/care-timeline.json (and
+          // the demo) keep the full insightCategory/severity/title/body
+          // fields the app preview actually uses. Revisit if the live
+          // webhook path and DB schema are migrated to the new taxonomy.
+          const legacyType: EventType =
+            item.insightCategory === "Medication"
+              ? "pharmacy"
+              : item.insightCategory === "Positive"
+                ? "memory"
+                : "observation";
+          const legacyMood: Mood =
+            item.severity === "Positive" ? "positive" : item.severity === "Low" ? "neutral" : "negative";
+          const inserted = await insertEvent({
+            type: legacyType,
+            occurredAt: sourceMessage.timestamp,
+            summary: `${item.title}. ${item.body}`,
+            mood: legacyMood,
+            personId,
+            source: "export",
+            sourceMessageId: sourceMessage.dbMessageId,
+          });
+          id = inserted.id;
+        }
+        careTimeline.push({ id, ...base });
       } else if (item.category === "life_story") {
         const occurredAt = item.isHistorical ? null : sourceMessage.timestamp;
         const base = {
@@ -280,7 +296,9 @@ async function main() {
             };
         lifeStory.push(saved);
       } else {
-        const dueAt = item.dueDate ? new Date(item.dueDate) : null;
+        const dueAt = item.dueDate
+          ? new Date(item.dueTime ? `${item.dueDate}T${item.dueTime}:00` : item.dueDate)
+          : null;
         const base = {
           title: item.title,
           item_type: item.itemType,

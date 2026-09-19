@@ -82,10 +82,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (item.category === "care") {
       care.push({
         id: nextId++,
-        type: item.type,
+        insight_category: item.insightCategory,
+        severity: item.severity,
+        title: item.title,
+        body: item.body,
         occurred_at: sourceMessage.timestamp.toISOString(),
-        summary: item.summary,
-        mood: item.mood,
         person_name: personName,
       });
     } else if (item.category === "life_story") {
@@ -102,6 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title: item.title,
         item_type: item.itemType,
         due_at: item.dueDate,
+        due_time: item.dueTime,
         notes: item.notes,
         person_name: personName,
       });

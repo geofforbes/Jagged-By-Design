@@ -1,9 +1,10 @@
 export interface CareItem {
   id: number;
-  type: string;
+  insight_category: string;
+  severity: string;
+  title: string;
+  body: string;
   occurred_at: string;
-  summary: string;
-  mood: string | null;
   person_name: string;
 }
 
@@ -20,6 +21,7 @@ export interface CalendarItem {
   title: string;
   item_type: string;
   due_at: string | null;
+  due_time: string | null;
   notes: string | null;
   person_name: string;
 }
@@ -35,10 +37,11 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
-const MOOD_TAG: Record<string, { bg: string; text: string; label: string }> = {
-  positive: { bg: "var(--cc-tag-family-bg)", text: "var(--cc-tag-family-text)", label: "Positive" },
-  neutral: { bg: "var(--cc-border)", text: "var(--cc-text-secondary)", label: "Neutral" },
-  negative: { bg: "var(--cc-tag-safety-bg)", text: "var(--cc-tag-safety-text)", label: "Negative" },
+const SEVERITY_TAG: Record<string, { bg: string; text: string }> = {
+  High: { bg: "var(--cc-tag-high-bg)", text: "var(--cc-tag-high-text)" },
+  Medium: { bg: "var(--cc-tag-medium-bg)", text: "var(--cc-tag-medium-text)" },
+  Low: { bg: "var(--cc-tag-low-bg)", text: "var(--cc-tag-low-text)" },
+  Positive: { bg: "var(--cc-tag-positive-bg)", text: "var(--cc-tag-positive-text)" },
 };
 
 export default function ResultsPreview({ results }: { results: DemoResults }) {
@@ -67,21 +70,22 @@ export default function ResultsPreview({ results }: { results: DemoResults }) {
         <section className="results-section">
           <h3>Care</h3>
           {results.care.map((item) => {
-            const mood = item.mood ? MOOD_TAG[item.mood] : null;
+            const severity = SEVERITY_TAG[item.severity] ?? SEVERITY_TAG.Low;
             return (
               <div className="cc-card" key={item.id}>
                 <div className="cc-card-meta">
-                  <span className="cc-tag" style={{ background: "var(--cc-tag-medication-bg)", color: "var(--cc-tag-medication-text)" }}>
-                    {item.type}
+                  <span className="cc-tag" style={{ background: severity.bg, color: severity.text }}>
+                    {item.insight_category}
                   </span>
-                  {mood && (
-                    <span className="cc-tag" style={{ background: mood.bg, color: mood.text }}>
-                      {mood.label}
-                    </span>
-                  )}
+                  <span className="cc-tag" style={{ background: severity.bg, color: severity.text }}>
+                    {item.severity}
+                  </span>
                   <span className="cc-card-date">{formatDate(item.occurred_at)}</span>
                 </div>
-                <p className="cc-card-summary">{item.summary}</p>
+                <p className="cc-card-summary">
+                  <strong>{item.title}</strong>
+                </p>
+                <p className="cc-card-notes">{item.body}</p>
                 <p className="cc-card-source">via {item.person_name}</p>
               </div>
             );
@@ -95,10 +99,15 @@ export default function ResultsPreview({ results }: { results: DemoResults }) {
           {results.calendar.map((item) => (
             <div className="cc-card" key={item.id}>
               <div className="cc-card-meta">
-                <span className="cc-tag" style={{ background: "var(--cc-tag-family-bg)", color: "var(--cc-tag-family-text)" }}>
+                <span className="cc-tag" style={{ background: "var(--cc-tag-low-bg)", color: "var(--cc-tag-low-text)" }}>
                   {item.item_type}
                 </span>
-                {item.due_at && <span className="cc-card-date">{formatDate(item.due_at)}</span>}
+                {item.due_at && (
+                  <span className="cc-card-date">
+                    {formatDate(item.due_at)}
+                    {item.due_time ? ` · ${item.due_time}` : ""}
+                  </span>
+                )}
               </div>
               <p className="cc-card-summary">{item.title}</p>
               {item.notes && <p className="cc-card-notes">{item.notes}</p>}

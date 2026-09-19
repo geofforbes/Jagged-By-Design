@@ -257,7 +257,7 @@ export default function DemoPage() {
             <h3 className="demo-stage-label">Care Co. app</h3>
             <div className="demo-stage-frame">
               {phase === "done" && results ? (
-                <AppPreview results={results} />
+                <AppPreview results={results} lovedOneName={lovedOneName.trim()} messages={messages} />
               ) : (
                 <div className="demo-stage-placeholder">App screens populate here once processing finishes.</div>
               )}
