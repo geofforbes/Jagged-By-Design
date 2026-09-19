@@ -376,6 +376,7 @@ body {
 .demo-header-brand {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
 }
 
