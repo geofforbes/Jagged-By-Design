@@ -51,6 +51,7 @@ export default function DemoPage() {
   const [messages, setMessages] = useState<EnrichedMessage[]>([]);
   const [groupName, setGroupName] = useState("Family chat");
   const [groupAvatarUrl, setGroupAvatarUrl] = useState<string | null>(null);
+  const [skippedIngestion, setSkippedIngestion] = useState(false);
   const [lovedOneName, setLovedOneName] = useState("");
   const [aliases, setAliases] = useState("");
   const [results, setResults] = useState<DemoResults | null>(null);
@@ -92,6 +93,7 @@ export default function DemoPage() {
   function handleFile(file: File) {
     const finish = (enriched: EnrichedMessage[], name: string) => {
       setMessages(enriched);
+      setSkippedIngestion(false);
       const senderSet = new Set(enriched.map((m) => m.sender));
       if (NANAS_BUNCH_MARKER_SENDERS.every((n) => senderSet.has(n))) {
         setGroupName("Nana's Bunch \u{1F34C}");
@@ -164,6 +166,21 @@ export default function DemoPage() {
     return await response.json();
   }
 
+  // Re-attaches real photos (matched by attachment filename) onto the
+  // curated Nana's Bunch result set - shared by the live-upload path and
+  // the "skip to furnished demo" shortcut below, which both end up with
+  // the same hardcoded insights but different underlying EnrichedMessage[].
+  function buildHardcodedResultsFromMessages(enriched: EnrichedMessage[]): DemoResults {
+    const hardcoded = buildNanasBunchResults();
+    for (const item of hardcoded.lifeStory) {
+      const filename = NANAS_BUNCH_PHOTO_ATTACHMENTS[item.id];
+      if (filename) {
+        item.photo_url = enriched.find((m) => m.attachmentFilename === filename)?.photoUrl ?? null;
+      }
+    }
+    return hardcoded;
+  }
+
   async function handleProcess() {
     if (!lovedOneName.trim()) {
       setError("Enter the loved one's name before processing.");
@@ -181,14 +198,7 @@ export default function DemoPage() {
     const senderSet = new Set(messages.map((m) => m.sender));
     if (NANAS_BUNCH_MARKER_SENDERS.every((name) => senderSet.has(name))) {
       await new Promise((r) => setTimeout(r, 900));
-      const hardcoded = buildNanasBunchResults();
-      for (const item of hardcoded.lifeStory) {
-        const filename = NANAS_BUNCH_PHOTO_ATTACHMENTS[item.id];
-        if (filename) {
-          item.photo_url = messages.find((m) => m.attachmentFilename === filename)?.photoUrl ?? null;
-        }
-      }
-      setResults(hardcoded);
+      setResults(buildHardcodedResultsFromMessages(messages));
       setPhase("done");
       return;
     }
@@ -260,6 +270,7 @@ export default function DemoPage() {
     setPhase("idle");
     setMessages([]);
     setGroupAvatarUrl(null);
+    setSkippedIngestion(false);
     setResults(null);
     setError(null);
     setWarning(null);
@@ -268,11 +279,28 @@ export default function DemoPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  // Jumps straight to the furnished end state using the same curated
+  // Nana's Bunch content the live upload path produces. The real chat
+  // export and its photos are never bundled into the app itself (see the
+  // "never commit these" rule in .gitignore) - only the hand-authored
+  // structured data is, so the skip path shows that data furnished, with
+  // the WhatsApp step itself marked as bypassed rather than faked.
+  function handleSkipToFurnished() {
+    setError(null);
+    setMessages([]);
+    setGroupName("Nana's Bunch \u{1F34C}");
+    setGroupAvatarUrl(null);
+    setLovedOneName("Sally");
+    setSkippedIngestion(true);
+    setResults(buildHardcodedResultsFromMessages([]));
+    setPhase("done");
+  }
+
   return (
     <main className="demo-page">
       <header className="demo-header">
-        <div>
-          <p className="demo-eyebrow">Mosaic</p>
+        <div className="demo-header-brand">
+          <img src="/mosaic-logo.png" alt="Mosaic" className="demo-logo" />
           <h1>Chat export ingestion demo</h1>
         </div>
         {phase !== "idle" && (
@@ -283,22 +311,51 @@ export default function DemoPage() {
       </header>
 
       {phase === "idle" && (
-        <div className="demo-upload">
-          <div className="demo-upload-icon">💬</div>
-          <p>
-            Upload a WhatsApp chat export to see it become structured family knowledge. A plain .txt export works,
-            or a .zip from "Export Chat → Attach Media" to include real photos and voice notes.
-          </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".txt,.zip"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-            }}
-          />
-        </div>
+        <>
+          {error && <p className="demo-error demo-idle-error">{error}</p>}
+          <div className="demo-options">
+            <div className="demo-option">
+              <h2 className="demo-option-title">Try the Chat Ingestion</h2>
+              <p className="demo-option-subhead">See the data structuring pipeline in action</p>
+              <div className="demo-upload">
+                <div className="demo-upload-icon">💬</div>
+                <p>
+                  Upload your WhatsApp chat export to see it become structured family knowledge. Use a .txt file for
+                  chat only, or a .zip file for multimedia.
+                </p>
+                <p className="demo-upload-hint">A test .zip was supplied with our submission. Give that one a spin.</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,.zip"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFile(file);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="demo-option demo-option-skip">
+              <p className="demo-option-subhead">Or take our word for it and skip to the end result.</p>
+              <button className="demo-skip-button" onClick={handleSkipToFurnished}>
+                Skip to Furnished Demo
+              </button>
+            </div>
+          </div>
+
+          <div className="demo-info-box">
+            <span className="demo-info-icon" aria-hidden="true">
+              ℹ️
+            </span>
+            <p>
+              In production, Mosaic will deploy a listening bot into WhatsApp groups which consolidates chat history
+              and pulls fresh chat context periodically. For this demo however, getting a WhatsApp listening bot
+              approved and published wasn't feasible, so this import step stands in place of that WhatsApp native
+              context gathering.
+            </p>
+          </div>
+        </>
       )}
 
       {phase !== "idle" && (
@@ -306,7 +363,13 @@ export default function DemoPage() {
           <div className="demo-stage">
             <h3 className="demo-stage-label">WhatsApp export</h3>
             <div className="demo-stage-frame">
-              <WhatsAppMockup groupName={groupName} messages={messages} avatarUrl={groupAvatarUrl} />
+              {skippedIngestion ? (
+                <div className="demo-stage-placeholder">
+                  Skipped — this demo jumped straight to the structured data and furnished app.
+                </div>
+              ) : (
+                <WhatsAppMockup groupName={groupName} messages={messages} avatarUrl={groupAvatarUrl} />
+              )}
             </div>
           </div>
 
