@@ -5,7 +5,12 @@ import AppPreview from "../components/AppPreview";
 import ResultsPreview, { type CareItem, type CalendarItem, type DemoResults, type LifeStoryItem } from "../components/ResultsPreview";
 import { parseWhatsAppExport } from "../lib/parseWhatsAppExport";
 import { captionOnly, detectMediaKind, type EnrichedMessage } from "../lib/mediaKind";
-import { NANAS_BUNCH_MARKER_SENDERS, NANAS_BUNCH_PHOTO_ATTACHMENTS, buildNanasBunchResults } from "../lib/nanasBunchDemo";
+import {
+  NANAS_BUNCH_CHAT_EXPORT,
+  NANAS_BUNCH_MARKER_SENDERS,
+  NANAS_BUNCH_PHOTO_ATTACHMENTS,
+  buildNanasBunchResults,
+} from "../lib/nanasBunchDemo";
 
 type Phase = "idle" | "parsed" | "processing" | "done" | "error";
 
@@ -51,7 +56,6 @@ export default function DemoPage() {
   const [messages, setMessages] = useState<EnrichedMessage[]>([]);
   const [groupName, setGroupName] = useState("Family chat");
   const [groupAvatarUrl, setGroupAvatarUrl] = useState<string | null>(null);
-  const [skippedIngestion, setSkippedIngestion] = useState(false);
   const [lovedOneName, setLovedOneName] = useState("");
   const [aliases, setAliases] = useState("");
   const [results, setResults] = useState<DemoResults | null>(null);
@@ -93,7 +97,6 @@ export default function DemoPage() {
   function handleFile(file: File) {
     const finish = (enriched: EnrichedMessage[], name: string) => {
       setMessages(enriched);
-      setSkippedIngestion(false);
       const senderSet = new Set(enriched.map((m) => m.sender));
       if (NANAS_BUNCH_MARKER_SENDERS.every((n) => senderSet.has(n))) {
         setGroupName("Nana's Bunch \u{1F34C}");
@@ -270,7 +273,6 @@ export default function DemoPage() {
     setPhase("idle");
     setMessages([]);
     setGroupAvatarUrl(null);
-    setSkippedIngestion(false);
     setResults(null);
     setError(null);
     setWarning(null);
@@ -279,20 +281,23 @@ export default function DemoPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  // Jumps straight to the furnished end state using the same curated
-  // Nana's Bunch content the live upload path produces. The real chat
-  // export and its photos are never bundled into the app itself (see the
-  // "never commit these" rule in .gitignore) - only the hand-authored
-  // structured data is, so the skip path shows that data furnished, with
-  // the WhatsApp step itself marked as bypassed rather than faked.
+  // Jumps straight to the furnished end state using the real Nana's Bunch
+  // chat text (bundled as a source constant, same content as the sample
+  // .zip supplied with the submission) run through the exact same parser a
+  // live upload goes through - so the WhatsApp mockup, structured data, and
+  // app screens all show the same real conversation, only without making
+  // the visitor click through the ingestion steps. The real photos aren't
+  // bundled into the app (see nanasBunchDemo.ts), so photo messages here
+  // show the normal camera-icon placeholder instead of the real image.
   function handleSkipToFurnished() {
     setError(null);
-    setMessages([]);
+    const parsed = parseWhatsAppExport(NANAS_BUNCH_CHAT_EXPORT);
+    const enriched: EnrichedMessage[] = parsed.map((m) => ({ ...m, mediaKind: detectMediaKind(m), photoUrl: null }));
+    setMessages(enriched);
     setGroupName("Nana's Bunch \u{1F34C}");
     setGroupAvatarUrl(null);
     setLovedOneName("Sally");
-    setSkippedIngestion(true);
-    setResults(buildHardcodedResultsFromMessages([]));
+    setResults(buildHardcodedResultsFromMessages(enriched));
     setPhase("done");
   }
 
@@ -363,13 +368,7 @@ export default function DemoPage() {
           <div className="demo-stage">
             <h3 className="demo-stage-label">WhatsApp export</h3>
             <div className="demo-stage-frame">
-              {skippedIngestion ? (
-                <div className="demo-stage-placeholder">
-                  Skipped — this demo jumped straight to the structured data and furnished app.
-                </div>
-              ) : (
-                <WhatsAppMockup groupName={groupName} messages={messages} avatarUrl={groupAvatarUrl} />
-              )}
+              <WhatsAppMockup groupName={groupName} messages={messages} avatarUrl={groupAvatarUrl} />
             </div>
           </div>
 
