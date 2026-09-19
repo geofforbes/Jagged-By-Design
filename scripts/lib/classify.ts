@@ -124,12 +124,22 @@ export async function classifyChunk(
 
   const request = {
     model: CLAUDE_MODEL,
-    max_tokens: 16000,
-    system: systemPrompt(lovedOneName, lovedOneAliases),
-    messages: [{ role: "user" as const, content: transcript }],
+    // Sonnet 5 runs adaptive thinking at effort "high" by default when
+    // neither is set - full reasoning depth for what's a fast, bounded
+    // classification pass over a small chunk. That default is almost
+    // certainly the dominant cost in the ~20-40s per-batch latency seen in
+    // production, well above what concurrency alone can fix. "low" is the
+    // documented setting for classification/extraction workloads.
+    // max_tokens was also sized for arbitrarily large day-chunks in the CLI
+    // path; 4096 is still generous headroom for this schema's short,
+    // per-item summaries.
+    max_tokens: 4096,
     output_config: {
+      effort: "low" as const,
       format: zodOutputFormat(ClassificationResultSchema),
     },
+    system: systemPrompt(lovedOneName, lovedOneAliases),
+    messages: [{ role: "user" as const, content: transcript }],
   };
 
   try {
